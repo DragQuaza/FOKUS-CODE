@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+body {
+      width: 350px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      background: #FFFFFF;
+      color: #1A1A1A;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #1A1A1A;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #10B981;
+      text-shadow: 2px 2px 4px rgba(16, 185, 129, 0.3);
+    }
+    
+    .subtitle {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .toggle-section {
+      background: #F8F9FA;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .toggle-label {
+      font-weight: 500;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #D1D5DB;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: #10B981;
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+    
+    
+    .custom-domain-section {
+      background: #F8F9FA;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 15px;
+      color: #374151;
+      letter-spacing: -0.025em;
+    }
+    
+    .input-group {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #D1D5DB;
+      border-right: none;
+      border-radius: 8px 0 0 8px;
+      background: #FFFFFF;
+      color: #374151;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #10B981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    .add-btn {
+      padding: 8px 15px;
+      background: #10B981;
+      color: white;
+      border: none;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background-color 0.2s ease;
+    }
+    
+    .add-btn:hover {
+      background: #059669;
+    }
+    
+    .domain-list {
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+    
+    .domain-item {
+      background: #FFFFFF;
+      padding: 8px 12px;
+      margin: 6px 0;
+      border-radius: 8px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #E5E7EB;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .remove-btn {
+      background: #f44336;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      padding: 2px 6px;
+      cursor: pointer;
+      font-size: 10px;
+    }
+    
+    .stats {
+      background: #2E2E2E;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    
+    .stats-number {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #66BB6A;
+    }
+    
+    .stats-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    /* AdBlock Statistics Styles */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    
+    .stat-item {
+      text-align: center;
+      padding: 8px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .stat-number {
+      font-size: 16px;
+      font-weight: 700;
+      color: #059669;
+      margin-bottom: 2px;
+    }
+    
+    .stat-label {
+      font-size: 10px;
+      color: #6B7280;
+      font-weight: 500;
+    }
+    
+    .reset-stats-btn {
+      width: 100%;
+      padding: 6px 12px;
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .reset-stats-btn:hover {
+      background: #E5E7EB;
+      border-color: #9CA3AF;
+    }
+    
+    /* Contests Section Styles */
+    .contests-section {
+      background: #F8F9FA;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #6B7280;
+      font-size: 14px;
+    }
+    
+    .contest-item {
+      background: #FFFFFF;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      border: 1px solid #E5E7EB;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      min-height: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    
+    .contest-item:hover {
+      border-color: #10B981;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+    }
+    
+    .contest-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0;
+    }
+    
+    .contest-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1F2937;
+      line-height: 1.3;
+      flex: 1;
+      margin-right: 10px;
+    }
+    
+    .contest-platform {
+      background: #10B981;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+    
+    .contest-platform.codeforces {
+      background: #1F8EFA;
+    }
+    
+    .contest-platform.codechef {
+      background: #964B00;
+    }
+    
+    .contest-platform.leetcode {
+      background: #FFA116;
+    }
+    
+    .contest-platform.atcoder {
+      background: #000000;
+    }
+    
+    .contest-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .contest-time {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .contest-duration {
+      background: #F3F4F6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    
+    .contest-countdown {
+      font-weight: 600;
+      color: #DC2626;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+    
+    .contest-countdown.live {
+      color: #16A34A;
+    }
+    
+    .contest-countdown.upcoming {
+      color: #2563EB;
+    }
+    
+    .no-contests {
+      text-align: center;
+      padding: 20px;
+      color: #6B7280;
+      font-size: 14px;
+      font-style: italic;
+    }
+    
+    .refresh-btn {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 10px;
+      transition: all 0.2s ease;
+    }
+    
+    .refresh-btn:hover {
+      background: #E5E7EB;
+      border-color: #9CA3AF;
+    }
+    
+    /* Reminder Button Styles */
+    .reminder-btn {
+      background: #FFA116;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      white-space: nowrap;
+      line-height: 1.1;
+    }
+    
+    .reminder-btn:hover {
+      background: #FF8C00;
+      transform: translateY(-1px);
+    }
+    
+    .reminder-btn.active {
+      background: #16A34A;
+    }
+    
+    .reminder-btn.active:hover {
+      background: #059669;
+    }
+    
+    .reminder-icon {
+      margin-right: 2px;
+    }
+    
+    .reminder-button-container {
+      display: flex;
+      align-items: center;
+    }
+    
+    .reminder-status {
+      font-size: 9px;
+      color: #059669;
+      margin-left: 4px;
+      font-weight: 500;
+    }
+    
+    /* Reminders Section Styles */
+    .reminders-section {
+      background: #F8F9FA;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .reminder-item {
+      background: #FFFFFF;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 6px;
+      border: 1px solid #E5E7EB;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .reminder-info {
+      flex: 1;
+    }
+    
+    .reminder-title {
+      font-weight: 600;
+      font-size: 12px;
+      color: #1F2937;
+      margin-bottom: 2px;
+    }
+    
+    .reminder-time {
+      font-size: 10px;
+      color: #6B7280;
+    }
+    
+    .reminder-remove {
+      background: #EF4444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .reminder-remove:hover {
+      background: #DC2626;
+    }
+    
+    /* Profile Section Styles */
+    .profile-section {
+      background: #F8F9FA;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .auth-btn {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .save-btn {
+      background: #10B981;
+      color: white;
+      margin-top: 12px;
+    }
+    
+    .save-btn:hover {
+      background: #059669;
+    }
+    
+    .username-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .username-inputs input {
+      border-radius: 6px;
+      border: 1px solid #D1D5DB;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    
+    .username-inputs input:focus {
+      border-color: #10B981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #E5E7EB;
+    }
+    
+    .profile-avatar {
+      position: relative;
+      width: 48px;
+      height: 48px;
+    }
+    
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .profile-avatar #profileInitials {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #10B981;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .profile-info {
+      flex: 1;
+    }
+    
+    .profile-info #profileName {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1F2937;
+    }
+    
+    .profile-info #profileEmail {
+      font-size: 12px;
+      color: #6B7280;
+    }
+    
+    .sign-out-btn {
+      padding: 6px 12px;
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s ease;
+    }
+    
+    .sign-out-btn:hover {
+      background: #E5E7EB;
+    }
+    
+    .platforms-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    
+    .platform-card {
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .platform-card:hover {
+      border-color: #10B981;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+      transform: translateY(-1px);
+    }
+    
+    .platform-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    
+    .platform-name {
+      font-weight: 600;
+      font-size: 10px;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    
+    .platform-name::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+    }
+    
+    .platform-rating {
+      font-weight: 700;
+      font-size: 11px;
+      color: #10B981;
+      text-align: right;
+      line-height: 1.2;
+    }
+    
+    .platform-username {
+      font-size: 9px;
+      color: #6B7280;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    
+    .rating-stars {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      margin-bottom: 1px;
+    }
+    
+    .star {
+      color: #FFD700;
+      font-size: 10px;
+      text-shadow: 0 0 2px rgba(255, 215, 0, 0.5);
+    }
+    
+    .rating-number {
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    .rating-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .platform-bottom-right {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      font-size: 9px;
+      font-weight: 600;
+      color: white;
+      background-color: #10B981;
+      padding: 2px 6px;
+      border-radius: 12px;
+      z-index: 10;
+      white-space: nowrap;
+      max-width: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .platform-loading {
+      color: #9CA3AF;
+      font-style: italic;
+      font-size: 8px;
+    }
+    
+    .platform-error {
+      color: #EF4444;
+      font-size: 8px;
+    }
+    
+    .platform-card.codechef .platform-error {
+      color: #FCA5A5;
+    }
+    
+    .platform-card {
+      padding: 8px;
+    }
+    
+    .platform-header {
+      margin-bottom: 4px;
+    }
+    
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">💻  FOKUS CODE</div>
+    <div class="subtitle">Stay focused on coding</div>
+  </div>
+  
+  <div class="toggle-section">
+    <div class="toggle-container">
+      <span class="toggle-label">Focus Mode</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="enableToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;"></div>
+  </div>
+  
+  
+  <div class="custom-domain-section">
+    <div class="section-title">Add Custom Coding Site</div>
+    <div class="input-group">
+      <input type="text" id="domainInput" placeholder="e.g., codingsite.com">
+      <button id="addDomain" class="add-btn">Add</button>
+    </div>
+    <div class="domain-list" id="customDomains"></div>
+  </div>
+  
+  <div class="profile-section">
+    <div class="section-title">👤 Profile</div>
+    <div id="profileContainer">
+      <div id="authSection">
+        <div class="manual-profile">
+          <div class="username-inputs">
+            <input type="text" id="displayName" placeholder="Enter your name">
+            <input type="text" id="codeforcesUsername" placeholder="Codeforces username">
+            <input type="text" id="codechefUsername" placeholder="CodeChef username">
+            <input type="text" id="leetcodeUsername" placeholder="LeetCode username">
+            <input type="text" id="atcoderUsername" placeholder="AtCoder username">
+          </div>
+          <button id="saveProfile" class="auth-btn save-btn">Save Profile</button>
+        </div>
+      </div>
+      <div id="profileDisplay" style="display: none;">
+        <div class="profile-header">
+          <div class="profile-avatar">
+            <img id="profilePhoto" src="" alt="Profile">
+            <div id="profileInitials"></div>
+          </div>
+          <div class="profile-info">
+            <div id="profileName">Coder</div>
+            <div id="profileEmail"></div>
+          </div>
+          <button id="signOut" class="sign-out-btn">Sign Out</button>
+        </div>
+        <div class="platforms-grid">
+          <div class="platform-card" id="codeforcesCard">
+            <div class="platform-header">
+              <span class="platform-name">Codeforces</span>
+              <span class="platform-rating" id="codeforcesRating">-</span>
+            </div>
+            <div class="platform-username" id="codeforcesDisplayUsername">-</div>
+          </div>
+          <div class="platform-card" id="codechefCard">
+            <div class="platform-header">
+              <span class="platform-name">CodeChef</span>
+              <span class="platform-rating" id="codechefRating">-</span>
+            </div>
+            <div class="platform-username" id="codechefDisplayUsername">-</div>
+          </div>
+          <div class="platform-card" id="leetcodeCard">
+            <div class="platform-header">
+              <span class="platform-name">LeetCode</span>
+              <span class="platform-rating" id="leetcodeRating">-</span>
+            </div>
+            <div class="platform-username" id="leetcodeDisplayUsername">-</div>
+          </div>
+          <div class="platform-card" id="atcoderCard">
+            <div class="platform-header">
+              <span class="platform-name">AtCoder</span>
+              <span class="platform-rating" id="atcoderRating">-</span>
+            </div>
+            <div class="platform-username" id="atcoderDisplayUsername">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="contests-section">
+    <div class="section-title">🏆 Upcoming Contests</div>
+    <div id="contestsContainer">
+      <div class="loading" id="contestsLoading">Loading contests...</div>
+      <div id="contestsList"></div>
+    </div>
+  </div>
+  
+  
+  <script src="popup.js"></script>
+</body>
+</html>
