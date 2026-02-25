@@ -104,7 +104,7 @@ chrome.runtime.onInstalled.addListener((details) => {
         customDomains: result.customDomains ?? [],
         initialized: true
       };
-      
+
       chrome.storage.sync.set(defaults);
     });
   }
@@ -114,51 +114,51 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
-    switch(request.action) {
+    switch (request.action) {
       case 'toggle':
         handleToggle(request.enabled, sendResponse);
         return true;
-        
+
       case 'getStatus':
         getExtensionStatus(sendResponse);
         return true;
-        
+
       case 'addCustomDomain':
         addCustomDomain(request.domain, sendResponse);
         return true;
-        
+
       case 'getCustomDomains':
         getCustomDomains(sendResponse);
         return true;
-        
+
       case 'removeCustomDomain':
         removeCustomDomain(request.domain, sendResponse);
         return true;
-        
+
       case 'checkDomain':
         checkDomainStatus(request.hostname, sendResponse);
         return true;
-        
+
       case 'getSettings':
         getSettings(sendResponse);
         return true;
-        
+
       case 'fetchRating':
         fetchPlatformRating(request.platform, request.username, sendResponse);
         return true;
-        
+
       case 'setContestReminder':
         setContestReminder(request.contest, request.reminderTime, sendResponse);
         return true;
-        
+
       case 'removeContestReminder':
         removeContestReminder(request.contestId, request.alarmName, sendResponse);
         return true;
-        
+
       case 'checkAllTabs':
         checkAllOpenTabs(request.enabled, sendResponse);
         return true;
-        
+
       default:
         sendResponse({ success: false, error: 'Unknown action' });
         return true;
@@ -171,18 +171,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 function handleToggle(enabled, sendResponse) {
   console.log('handleToggle called with enabled:', enabled);
-  
+
   chrome.storage.sync.set({ enabled: enabled }, () => {
     console.log('Storage set successful, enabled:', enabled);
-    
+
     // Immediately check all open tabs when focus mode is toggled
     chrome.tabs.query({}, (tabs) => {
       console.log('Found tabs:', tabs.length);
-      
+
       tabs.forEach(tab => {
         if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
           console.log('Checking tab:', tab.url);
-          
+
           // If focus mode is disabled and tab is on blocked page, restore it
           if (!enabled && tab.url.includes(chrome.runtime.getURL('blocked.html'))) {
             console.log('Restoring blocked tab:', tab.url);
@@ -197,7 +197,7 @@ function handleToggle(enabled, sendResponse) {
         }
       });
     });
-    
+
     sendResponse({ success: true });
   });
 }
@@ -262,17 +262,17 @@ function checkDomainStatus(hostname, sendResponse) {
         sendResponse({ shouldBlock: false });
         return;
       }
-      
+
       // Skip chrome and extension pages
-      if (hostname.startsWith('chrome') || hostname.includes('extension') || 
-          hostname === 'localhost' || hostname.startsWith('127.0.0.1')) {
+      if (hostname.startsWith('chrome') || hostname.includes('extension') ||
+        hostname === 'localhost' || hostname.startsWith('127.0.0.1')) {
         sendResponse({ shouldBlock: false });
         return;
       }
-      
+
       const customDomains = result.customDomains || [];
       const allAllowedDomains = [...ALLOWED_DOMAINS, ...customDomains];
-      
+
       // Check if domain is in allowed list
       const isAllowed = allAllowedDomains.some(domain => {
         // Exact match
@@ -283,7 +283,7 @@ function checkDomainStatus(hostname, sendResponse) {
         if (hostname.includes(domain)) return true;
         return false;
       });
-      
+
       sendResponse({ shouldBlock: !isAllowed });
     } catch (error) {
       console.error('Error in checkDomainStatus:', error);
@@ -308,7 +308,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 function restoreBlockedTab(tab) {
   chrome.storage.local.get([`blockedUrl_${tab.id}`], (result) => {
     const originalUrl = result[`blockedUrl_${tab.id}`];
-    
+
     if (originalUrl) {
       console.log('Restoring original URL from storage:', originalUrl);
       chrome.tabs.update(tab.id, {
@@ -320,7 +320,7 @@ function restoreBlockedTab(tab) {
       try {
         const urlParams = new URLSearchParams(new URL(tab.url).search);
         const originalFromParam = urlParams.get('original');
-        
+
         if (originalFromParam) {
           console.log('Restoring original URL from parameter:', originalFromParam);
           chrome.tabs.update(tab.id, {
@@ -358,25 +358,25 @@ function checkAllOpenTabs(focusEnabled, sendResponse) {
 function checkAndBlockTab(tab, focusEnabled) {
   try {
     if (!tab || !tab.url) return;
-    
+
     const url = new URL(tab.url);
     const hostname = url.hostname;
-    
+
     // Skip chrome:// and extension pages
-    if (url.protocol === 'chrome:' || 
-        url.protocol === 'chrome-extension:' ||
-        url.protocol === 'about:' ||
-        url.protocol === 'moz-extension:' ||
-        hostname === 'localhost' ||
-        hostname.startsWith('127.0.0.1')) {
+    if (url.protocol === 'chrome:' ||
+      url.protocol === 'chrome-extension:' ||
+      url.protocol === 'about:' ||
+      url.protocol === 'moz-extension:' ||
+      hostname === 'localhost' ||
+      hostname.startsWith('127.0.0.1')) {
       return;
     }
-    
+
     chrome.storage.sync.get(['customDomains'], (result) => {
       try {
         const customDomains = result.customDomains || [];
         let isAllowed = false;
-        
+
         if (focusEnabled) {
           // Focus mode: allow all coding domains + custom domains
           const allAllowedDomains = [...ALLOWED_DOMAINS, ...customDomains];
@@ -393,13 +393,13 @@ function checkAndBlockTab(tab, focusEnabled) {
           // Default mode: allow all sites
           isAllowed = true;
         }
-        
+
         if (!isAllowed) {
           // Store the original URL before blocking
           chrome.storage.local.set({
             [`blockedUrl_${tab.id}`]: tab.url
           });
-          
+
           // Redirect to blocked page with original URL as parameter
           const blockedUrl = chrome.runtime.getURL('blocked.html') + '?original=' + encodeURIComponent(tab.url);
           chrome.tabs.update(tab.id, {
@@ -421,26 +421,17 @@ function checkAndBlockTab(tab, focusEnabled) {
 
 async function fetchPlatformRating(platform, username, sendResponse) {
   try {
-    // Check if this is a hardcoded user and skip cache
-    const lowerUsername = username.toLowerCase();
-    const isHardcodedUser = (
-      (platform === 'codeforces' && lowerUsername === 'dragquaza') ||
-      (platform === 'codechef' && lowerUsername === 'hard_sheen_25') ||
-      (platform === 'leetcode' && lowerUsername === 'miruu') ||
-      (platform === 'atcoder' && lowerUsername === 'tourist')
-    );
-    
-    // Check cache first (but skip for hardcoded users)
+    // Check cache first
     const cacheKey = `rating_${platform}_${username}`;
-    const cachedData = !isHardcodedUser ? await getCachedRating(cacheKey) : null;
-    
+    const cachedData = await getCachedRating(cacheKey);
+
     if (cachedData) {
       sendResponse({ success: true, data: cachedData });
       return;
     }
-    
+
     let result;
-    
+
     switch (platform) {
       case 'codeforces':
         result = await fetchCodeforcesRating(username);
@@ -457,14 +448,14 @@ async function fetchPlatformRating(platform, username, sendResponse) {
       default:
         result = 'Unsupported platform';
     }
-    
+
     // Cache the result if it's valid (including successful API responses)
-    if (result && typeof result === 'object' && result.rating && 
-        result.rating !== 'API Error' && result.rating !== 'Network Error' && 
-        result.rating !== 'Request timeout') {
+    if (result && typeof result === 'object' && result.rating &&
+      result.rating !== 'API Error' && result.rating !== 'Network Error' &&
+      result.rating !== 'Request timeout') {
       await cacheRating(cacheKey, result);
     }
-    
+
     sendResponse({ success: true, data: result });
   } catch (error) {
     console.error(`Rating fetch error for ${platform}/${username}:`, error);
@@ -478,7 +469,7 @@ function fetchWithTimeout(url, options, timeoutMs = 10000) {
     const timeout = setTimeout(() => {
       reject(new Error('Request timeout'));
     }, timeoutMs);
-    
+
     fetch(url, options)
       .then(response => {
         clearTimeout(timeout);
@@ -527,7 +518,7 @@ async function getCachedRating(key) {
       if (cached) {
         const cacheAge = Date.now() - cached.timestamp;
         const cacheTimeout = 30 * 60 * 1000; // 30 minutes
-        
+
         if (cacheAge < cacheTimeout) {
           resolve(cached.data);
           return;
@@ -540,18 +531,6 @@ async function getCachedRating(key) {
 
 async function fetchCodeforcesRating(username) {
   try {
-    // Hardcoded values for specific users
-    const lowerUsername = username.toLowerCase();
-    if (lowerUsername === 'dragquaza') {
-      console.log('Returning hardcoded Codeforces rating for', username);
-      return {
-        rating: 1399,
-        maxRating: 1399,
-        rank: 'specialist',
-        handle: username
-      };
-    }
-    
     const response = await fetchWithRetry(`https://codeforces.com/api/user.info?handles=${username}`, {
       method: 'GET',
       headers: {
@@ -560,13 +539,13 @@ async function fetchCodeforcesRating(username) {
         'Cache-Control': 'no-cache'
       }
     }, 2, 8000);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
+
     if (data.status === 'OK' && data.result && data.result.length > 0) {
       const user = data.result[0];
       return {
@@ -581,7 +560,7 @@ async function fetchCodeforcesRating(username) {
       }
       return 'API Error';
     }
-    
+
     return 'Unrated';
   } catch (error) {
     console.error('Codeforces API error:', error);
@@ -595,127 +574,110 @@ async function fetchCodeforcesRating(username) {
 }
 
 
+// ============================
+// CODECHEF SERVICE (HTML Scraper)
+// Fetches the profile page directly and parses rating data.
+// Strategy 1: Extract __NEXT_DATA__ JSON (CodeChef uses Next.js)
+// Strategy 2: Regex fallback on raw HTML
+// ============================
 async function fetchCodeChefRating(username) {
   try {
-    // Hardcoded values for specific users
-    const lowerUsername = username.toLowerCase();
-    if (lowerUsername === 'hard_sheen_25') {
-      console.log('Returning hardcoded CodeChef rating for', username);
-      return {
-        rating: '1599',
-        stars: getStarsFromRating(1599),
-        globalRank: 'N/A',
-        countryRank: 'N/A',
-        username: username
-      };
+    // Fetch the actual profile page HTML
+    const response = await fetchWithRetry(
+      `https://www.codechef.com/users/${username}`,
+      {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      },
+      2,  // retries
+      15000 // timeout (longer for HTML pages)
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { rating: 'User not found', stars: 0, globalRank: 'N/A', countryRank: 'N/A', username: username };
+      }
+      throw new Error(`HTTP ${response.status}`);
     }
-    
-    // Try API endpoints for general users
-    const apiUrls = [
-      `https://codechef-api.vercel.app/handle/${username}`,
-      `https://competitive-coding-api.herokuapp.com/api/codechef/${username}`,
-      `https://codechef-ratings-api.herokuapp.com/user/${username}`,
-      `https://cp-algorithms.web.app/api/codechef/${username}`,
-      `https://codechef-api.herokuapp.com/${username}`,
-      `https://ccapi.herokuapp.com/handle/${username}`
-    ];
-    
-    for (const apiUrl of apiUrls) {
+
+    const html = await response.text();
+
+    // Check for 404 / user not found in page content
+    if (html.includes('Page Not Found') || html.includes('page-not-found')) {
+      return { rating: 'User not found', stars: 0, globalRank: 'N/A', countryRank: 'N/A', username: username };
+    }
+
+    // --- Strategy 1: Parse __NEXT_DATA__ JSON ---
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if (nextDataMatch) {
       try {
-        console.log(`Trying CodeChef API: ${apiUrl}`);
-        const response = await fetchWithTimeout(apiUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        }, 10000);
-        
-        if (!response.ok) {
-          console.warn(`CodeChef API ${apiUrl} returned status: ${response.status}`);
-          continue;
-        }
-        
-        const data = await response.json();
-        console.log(`CodeChef API response from ${apiUrl}:`, data);
-        
-        // Handle codechef-api.vercel.app response
-        if (data && data.success && data.currentRating !== undefined) {
-          const rating = parseInt(data.currentRating) || 0;
-          return {
-            rating: rating.toString(),
-            stars: data.stars || getStarsFromRating(rating),
-            globalRank: data.globalRank || 'N/A',
-            countryRank: data.countryRank || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle competitive-coding-api response
-        if (data && data.status === 'success' && data.rating !== undefined) {
-          const rating = parseInt(data.rating) || 0;
-          return {
-            rating: rating.toString(),
-            stars: data.stars || getStarsFromRating(rating),
-            globalRank: data.globalRank || 'N/A',
-            countryRank: data.countryRank || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle general response format
-        if (data && (data.currentRating !== undefined || data.rating !== undefined)) {
-          const rating = parseInt(data.currentRating || data.rating) || 0;
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const pageProps = nextData?.props?.pageProps;
+        if (pageProps) {
+          // Navigate through possible data shapes in Next.js payload
+          const userData = pageProps.userData || pageProps.data || pageProps;
+          const rating = parseInt(userData.currentRating || userData.rating) || 0;
           if (rating > 0) {
+            console.log(`CodeChef: Parsed rating ${rating} from __NEXT_DATA__ for ${username}`);
             return {
               rating: rating.toString(),
-              stars: data.stars || getStarsFromRating(rating),
-              globalRank: data.globalRank || data.rank || 'N/A',
-              countryRank: data.countryRank || 'N/A',
+              stars: userData.stars || getStarsFromRating(rating),
+              globalRank: userData.globalRank || userData.global_rank || 'N/A',
+              countryRank: userData.countryRank || userData.country_rank || 'N/A',
               username: username
             };
           }
         }
-        
-        // Handle array responses
-        if (Array.isArray(data) && data.length > 0) {
-          const user = data[0];
-          if (user && (user.rating !== undefined || user.currentRating !== undefined)) {
-            const rating = parseInt(user.rating || user.currentRating) || 0;
-            if (rating > 0) {
-              return {
-                rating: rating.toString(),
-                stars: user.stars || getStarsFromRating(rating),
-                globalRank: user.globalRank || user.rank || 'N/A',
-                countryRank: user.countryRank || 'N/A',
-                username: username
-              };
-            }
-          }
-        }
-        
-        // Handle error responses
-        if (data && data.error) {
-          if (data.error.includes('not found') || data.error.includes('User not found')) {
-            return {
-              rating: 'User not found',
-              stars: 0,
-              globalRank: 'N/A',
-              countryRank: 'N/A',
-              username: username
-            };
-          }
-        }
-        
-      } catch (error) {
-        console.error(`CodeChef API error for ${apiUrl}:`, error);
-        continue;
+      } catch (parseError) {
+        console.warn('CodeChef: Failed to parse __NEXT_DATA__, falling back to regex:', parseError.message);
       }
     }
-    
-    // Fallback: Return unrated status when APIs fail
-    console.log(`CodeChef: All APIs failed for ${username}, returning unrated`);
+
+    // --- Strategy 2: Regex-based HTML parsing ---
+    // Look for rating number in common HTML patterns
+    const ratingMatch = html.match(/rating-number[^>]*>(\d+)/i) ||
+      html.match(/"currentRating"\s*:\s*(\d+)/) ||
+      html.match(/"rating"\s*:\s*"?(\d+)"?/);
+
+    if (ratingMatch) {
+      const rating = parseInt(ratingMatch[1]);
+      if (rating > 0) {
+        console.log(`CodeChef: Parsed rating ${rating} from HTML regex for ${username}`);
+
+        // Extract stars from HTML
+        let stars = getStarsFromRating(rating);
+        const starsMatch = html.match(/rating-star[^>]*>([\s\S]*?)<\/span>/i);
+        if (starsMatch) {
+          const starCount = (starsMatch[1].match(/\u2605/g) || []).length; // ★ character
+          if (starCount > 0) stars = starCount;
+        }
+
+        // Extract global rank
+        const globalRankMatch = html.match(/Global\s*Rank[^<]*<[^>]*>(\d+)/i) ||
+          html.match(/"globalRank"\s*:\s*"?(\d+)"?/);
+        const globalRank = globalRankMatch ? globalRankMatch[1] : 'N/A';
+
+        // Extract country rank
+        const countryRankMatch = html.match(/Country\s*Rank[^<]*<[^>]*>(\d+)/i) ||
+          html.match(/"countryRank"\s*:\s*"?(\d+)"?/);
+        const countryRank = countryRankMatch ? countryRankMatch[1] : 'N/A';
+
+        return {
+          rating: rating.toString(),
+          stars: stars,
+          globalRank: globalRank,
+          countryRank: countryRank,
+          username: username
+        };
+      }
+    }
+
+    // User exists but is unrated
+    console.log(`CodeChef: No rating found for ${username}, returning unrated`);
     return {
       rating: 'Unrated',
       stars: 0,
@@ -723,9 +685,9 @@ async function fetchCodeChefRating(username) {
       countryRank: 'N/A',
       username: username
     };
-    
+
   } catch (error) {
-    console.error('CodeChef API error:', error);
+    console.error('CodeChef scraper error:', error);
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       return 'Network Error';
     } else if (error.message.includes('timeout')) {
@@ -757,6 +719,11 @@ function getAtCoderColor(rating) {
   return 'Gray';
 }
 
+// ============================
+// LEETCODE SERVICE (Direct GraphQL)
+// Single POST to leetcode.com/graphql — no mirrors needed.
+// Fetches contest rating + total problems solved.
+// ============================
 async function fetchLeetCodeRating(username) {
   try {
     if (!username) {
@@ -770,150 +737,93 @@ async function fetchLeetCodeRating(username) {
       };
     }
 
-    // Hardcoded values for specific users
-    const lowerUsername = username.toLowerCase();
-    if (lowerUsername === 'miruu') {
-      console.log('Returning hardcoded LeetCode rating for', username);
-      return {
-        rating: 3703,
-        totalSolved: 'N/A',
-        ranking: 'N/A',
-        acceptanceRate: 'N/A',
-        username: username
-      };
+    // GraphQL query for contest ranking and solve statistics
+    const query = `
+      query getUserProfile($username: String!) {
+        userContestRanking(username: $username) {
+          rating
+          globalRanking
+          attendedContestsCount
+        }
+        matchedUser(username: $username) {
+          profile {
+            ranking
+          }
+          submitStatsGlobal {
+            acSubmissionNum {
+              difficulty
+              count
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await fetchWithRetry(
+      'https://leetcode.com/graphql',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Referer': 'https://leetcode.com',
+          'Origin': 'https://leetcode.com'
+        },
+        body: JSON.stringify({
+          query: query,
+          variables: { username: username }
+        })
+      },
+      2,  // retries
+      10000 // timeout
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    // Updated API endpoints for LeetCode with most reliable ones first
-    const apiUrls = [
-      `https://leetcode-stats-api.herokuapp.com/${username}`,
-      `https://alfa-leetcode-api.onrender.com/userProfile/${username}`,
-      `https://leetcode-api-faisalshohag.vercel.app/${username}`,
-      `https://leetcode-api.cyclic.app/${username}`,
-      `https://competitive-coding-api.herokuapp.com/api/leetcode/${username}`,
-      `https://leetcode.com/api/user_profile/${username}/`,
-      `https://leetcode-api.herokuapp.com/${username}`,
-      `https://lcapi.herokuapp.com/user/${username}`
-    ];
-    
-    for (const apiUrl of apiUrls) {
-      try {
-        console.log(`Trying LeetCode API: ${apiUrl}`);
-        const response = await fetchWithTimeout(apiUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        }, 10000);
-        
-        if (!response.ok) {
-          console.warn(`LeetCode API ${apiUrl} returned status: ${response.status}`);
-          continue;
-        }
-        
-        const data = await response.json();
-        console.log(`LeetCode API response from ${apiUrl}:`, data);
-        
-        // Handle leetcode-stats-api.herokuapp.com response
-        if (data && data.status === 'success') {
-          const rating = parseInt(data.contestRating || data.rating) || 0;
-          return {
-            rating: rating || 'unrated',
-            totalSolved: data.totalSolved || data.solvedProblem || 0,
-            ranking: data.ranking || data.contestRanking || 'N/A',
-            acceptanceRate: data.acceptanceRate || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle alfa-leetcode-api response format
-        if (data && (data.totalSolved !== undefined || data.solvedProblem !== undefined)) {
-          const rating = parseInt(data.contestRating || data.rating) || 0;
-          return {
-            rating: rating || 'unrated',
-            totalSolved: data.totalSolved || data.solvedProblem || 0,
-            ranking: data.ranking || data.contestRanking || 'N/A',
-            acceptanceRate: data.acceptanceRate || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle different API response formats
-        if (data && data.data && data.data.totalSolved !== undefined) {
-          const rating = parseInt(data.data.contestRating || data.data.rating) || 0;
-          return {
-            rating: rating || 'unrated',
-            totalSolved: data.data.totalSolved || 0,
-            ranking: data.data.ranking || 'N/A',
-            acceptanceRate: data.data.acceptanceRate || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle LeetCode official API response format
-        if (data && data.user_name && data.num_solved !== undefined) {
-          return {
-            rating: 'unrated',
-            totalSolved: data.num_solved || 0,
-            ranking: 'N/A',
-            acceptanceRate: 'N/A',
-            username: username
-          };
-        }
-        
-        if (data && data.contestRating !== undefined) {
-          const rating = parseInt(data.contestRating) || 0;
-          return {
-            rating: rating || 'unrated',
-            totalSolved: data.totalSolved || data.solvedProblem || 0,
-            ranking: data.ranking || data.contestRanking || 'N/A',
-            acceptanceRate: data.acceptanceRate || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle direct rating response
-        if (data && (data.rating !== undefined || data.contestRating !== undefined)) {
-          return {
-            rating: data.rating || data.contestRating || 'unrated',
-            totalSolved: data.totalSolved || data.solvedProblem || 0,
-            ranking: data.ranking || data.contestRanking || 'N/A',
-            acceptanceRate: data.acceptanceRate || 'N/A',
-            username: username
-          };
-        }
-        
-        // Handle user data format
-        if (data && data.user) {
-          const user = data.user;
-          return {
-            rating: user.contestRating || user.rating || 'unrated',
-            totalSolved: user.totalSolved || user.solvedProblem || 0,
-            ranking: user.ranking || user.contestRanking || 'N/A',
-            acceptanceRate: user.acceptanceRate || 'N/A',
-            username: username
-          };
-        }
-        
-      } catch (error) {
-        console.error(`LeetCode API error for ${apiUrl}:`, error);
-        continue;
-      }
+    const data = await response.json();
+
+    // Handle GraphQL-level errors (e.g., user not found)
+    if (data.errors) {
+      const notFound = data.errors.some(e => e.message && e.message.toLowerCase().includes('not found'));
+      if (notFound) return 'User not found';
+      console.error('LeetCode GraphQL errors:', data.errors);
+      throw new Error(data.errors[0].message);
     }
-    
-    // Fallback: Return unrated status when APIs fail
-    console.log(`LeetCode: All APIs failed for ${username}, returning unrated`);
+
+    const contestRanking = data.data?.userContestRanking;
+    const matchedUser = data.data?.matchedUser;
+
+    // If matchedUser is null, the username does not exist
+    if (!matchedUser) {
+      return 'User not found';
+    }
+
+    // Calculate total problems solved from the submission stats
+    let totalSolved = 0;
+    if (matchedUser.submitStatsGlobal?.acSubmissionNum) {
+      const allDifficulty = matchedUser.submitStatsGlobal.acSubmissionNum.find(
+        s => s.difficulty === 'All'
+      );
+      totalSolved = allDifficulty?.count || 0;
+    }
+
+    // Contest rating (rounded) or 'unrated' if user hasn't participated
+    const rating = contestRanking ? Math.round(contestRanking.rating) : 'unrated';
+    const ranking = matchedUser.profile?.ranking || contestRanking?.globalRanking || 'N/A';
+
+    console.log(`LeetCode: Fetched rating ${rating} for ${username} via GraphQL`);
+
     return {
-      rating: 'unrated',
-      totalSolved: 0,
-      ranking: 'N/A',
+      rating: rating,
+      totalSolved: totalSolved,
+      ranking: ranking,
       acceptanceRate: 'N/A',
       username: username
     };
-    
+
   } catch (error) {
-    console.error('LeetCode API error:', error);
+    console.error('LeetCode GraphQL error:', error);
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       return 'Network Error';
     } else if (error.message.includes('timeout')) {
@@ -924,6 +834,10 @@ async function fetchLeetCodeRating(username) {
 }
 
 
+// ============================
+// ATCODER SERVICE (Kenkoooo API only)
+// Single stable endpoint — returns rating history as a JSON array.
+// ============================
 async function fetchAtCoderRating(username) {
   try {
     if (!username) {
@@ -936,66 +850,40 @@ async function fetchAtCoderRating(username) {
       };
     }
 
-    // Hardcoded values for specific users
-    const lowerUsername = username.toLowerCase();
-    if (lowerUsername === 'tourist') {
-      console.log('Returning hardcoded AtCoder rating for', username);
-      return {
-        rating: 3820,
-        maxRating: 3820,
-        color: 'Red',
-        username: username
-      };
-    }
-
-    // Updated API endpoints for AtCoder with most reliable ones first
+    // Primary: Official AtCoder history endpoint (most reliable)
+    // Fallback: Kenkoooo v2 user_info (for basic stats if official fails)
     const apiUrls = [
-      `https://kenkoooo.com/atcoder/atcoder-api/v3/user/rating_history?user=${username}`,
-      `https://atcoder-api.vercel.app/v1/user/${username}`,
-      `https://competitive-coding-api.herokuapp.com/api/atcoder/${username}`,
-      `https://cp-algorithms.web.app/api/atcoder/${username}`,
-      `https://atcoder.jp/users/${username}/history/json`
+      `https://atcoder.jp/users/${username}/history/json`,
+      `https://kenkoooo.com/atcoder/atcoder-api/v2/user_info?user=${username}`
     ];
-    
+
     for (const apiUrl of apiUrls) {
       try {
-        console.log(`Trying AtCoder API: ${apiUrl}`);
-        const response = await fetchWithTimeout(apiUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        }, 10000);
-        
+        console.log(`AtCoder: Trying ${apiUrl}`);
+        const response = await fetchWithRetry(
+          apiUrl,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          },
+          2,  // retries
+          10000 // timeout
+        );
+
         if (!response.ok) {
-          console.warn(`AtCoder API ${apiUrl} returned status: ${response.status}`);
+          console.warn(`AtCoder: ${apiUrl} returned HTTP ${response.status}`);
           continue;
         }
-        
+
         const data = await response.json();
-        console.log(`AtCoder API response from ${apiUrl}:`, data);
-        
-        // Handle kenkoooo.com response (rating history array)
+
+        // Handle array response (official AtCoder history endpoint)
         if (Array.isArray(data)) {
-          if (data.length > 0) {
-            const latestRating = data[data.length - 1];
-            const rating = latestRating.NewRating || latestRating.rating || latestRating.Rating;
-            const maxRating = Math.max(...data.map(entry => entry.NewRating || entry.rating || entry.Rating || 0));
-            
-            if (rating) {
-              let color = getAtCoderColor(rating);
-              
-              return {
-                rating: rating,
-                maxRating: maxRating,
-                color: color,
-                username: username
-              };
-            }
-          } else {
-            // User exists but has no rating history (unrated)
+          if (data.length === 0) {
+            console.log(`AtCoder: ${username} has no rating history (unrated)`);
             return {
               rating: 'Unrated',
               maxRating: 'N/A',
@@ -1003,54 +891,48 @@ async function fetchAtCoderRating(username) {
               username: username
             };
           }
-        }
-        
-        // Handle competitive-coding-api response
-        if (data && data.status === 'success' && data.rating !== undefined) {
-          let color = getAtCoderColor(data.rating);
-          
+
+          // Latest rating is the last element in the array
+          const latestRating = data[data.length - 1];
+          const rating = latestRating.NewRating || 0;
+          const maxRating = Math.max(...data.map(entry => entry.NewRating || 0));
+          const color = getAtCoderColor(rating);
+
+          console.log(`AtCoder: Fetched rating ${rating} (max: ${maxRating}) for ${username}`);
           return {
-            rating: data.rating || 'Unrated',
-            maxRating: data.maxRating || data.rating || 'Unrated',
+            rating: rating,
+            maxRating: maxRating,
             color: color,
             username: username
           };
         }
-        
-        // Handle object response
-        if (data && data.rating !== undefined) {
-          let color = getAtCoderColor(data.rating);
-          
+
+        // Handle object response (Kenkoooo v2 user_info — no rating, but confirms user exists)
+        if (data && data.user_id) {
+          console.log(`AtCoder: Found user ${username} via Kenkoooo v2 but no rating data available`);
           return {
-            rating: data.rating || 'Unrated',
-            maxRating: data.maxRating || data.rating || 'Unrated',
-            color: color,
+            rating: 'Unrated',
+            maxRating: 'N/A',
+            color: 'Gray',
             username: username
           };
         }
-        
-        // Handle error responses
-        if (data && data.error) {
-          if (data.error.includes('not found') || data.error.includes('User not found')) {
-            return 'User not found';
-          }
-        }
-        
+
       } catch (error) {
-        console.error(`AtCoder API error for ${apiUrl}:`, error);
+        console.error(`AtCoder: Error fetching ${apiUrl}:`, error.message);
         continue;
       }
     }
-    
-    // Fallback: Return unrated status when APIs fail
-    console.log(`AtCoder: All APIs failed for ${username}, returning unrated`);
+
+    // All endpoints failed
+    console.log(`AtCoder: All endpoints failed for ${username}`);
     return {
       rating: 'Unrated',
       maxRating: 'N/A',
       color: 'Gray',
       username: username
     };
-    
+
   } catch (error) {
     console.error('AtCoder API error:', error);
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -1067,12 +949,12 @@ async function fetchAtCoderRating(username) {
 function setContestReminder(contest, reminderTime, sendResponse) {
   const alarmName = `contest-${contest.id}`;
   const reminderDate = new Date(reminderTime);
-  
+
   // Create chrome alarm
   chrome.alarms.create(alarmName, {
     when: reminderDate.getTime()
   });
-  
+
   console.log(`Reminder set for ${contest.title} at ${reminderDate.toLocaleString()}`);
   sendResponse({ success: true });
 }
@@ -1089,12 +971,12 @@ function removeContestReminder(contestId, alarmName, sendResponse) {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name.startsWith('contest-')) {
     const contestId = alarm.name.replace('contest-', '');
-    
+
     // Get reminder details from storage
     chrome.storage.local.get(['contestReminders'], (result) => {
       const reminders = result.contestReminders || {};
       const reminder = reminders[contestId];
-      
+
       if (reminder) {
         // Show notification
         chrome.notifications.create({
@@ -1115,7 +997,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
             }
           });
         });
-        
+
         // Remove the reminder from storage after showing
         delete reminders[contestId];
         chrome.storage.local.set({ contestReminders: reminders });
@@ -1123,6 +1005,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     });
   }
 });
+
 
 // Handle notification button clicks
 chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
@@ -1134,7 +1017,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
       }
     });
   }
-  
+
   // Clear notification and its stored data
   chrome.notifications.clear(notificationId);
   chrome.storage.local.remove([`notification-${notificationId}`]);
@@ -1148,7 +1031,7 @@ chrome.notifications.onClicked.addListener((notificationId) => {
       chrome.tabs.create({ url: notificationData.contestUrl });
     }
   });
-  
+
   // Clear notification and its stored data
   chrome.notifications.clear(notificationId);
   chrome.storage.local.remove([`notification-${notificationId}`]);
@@ -1160,21 +1043,21 @@ function cleanupExpiredReminders() {
     const reminders = result.contestReminders || {};
     const now = new Date();
     let hasExpired = false;
-    
+
     for (const [contestId, reminder] of Object.entries(reminders)) {
       const reminderTime = new Date(reminder.reminderTime);
       const contestStart = new Date(reminder.startTime);
-      
+
       // Remove reminders that are more than 24 hours past the contest start
       if (now - contestStart > 24 * 60 * 60 * 1000) {
         delete reminders[contestId];
         hasExpired = true;
-        
+
         // Also clear the alarm
         chrome.alarms.clear(reminder.alarmName);
       }
     }
-    
+
     if (hasExpired) {
       chrome.storage.local.set({ contestReminders: reminders });
       console.log('Cleaned up expired contest reminders');

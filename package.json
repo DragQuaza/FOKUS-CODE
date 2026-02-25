@@ -1,0 +1,13 @@
+{
+    "name": "fokus-code-mono",
+    "version": "1.0.0",
+    "description": "FOKUS CODE Chrome Extension & AI Backend",
+    "scripts": {
+        "setup": "npm install && cd server && npm install",
+        "server": "cd server && npm start",
+        "dev": "cd server && npm run dev",
+        "test:api": "curl -s http://localhost:3001/api/health"
+    },
+    "author": "",
+    "license": "MIT"
+}
