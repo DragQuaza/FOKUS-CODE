@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const enableToggle = document.getElementById('enableToggle');
   const domainInput = document.getElementById('domainInput');
   const addDomainBtn = document.getElementById('addDomain');
@@ -7,26 +7,27 @@ document.addEventListener('DOMContentLoaded', function() {
   initializePopup();
   initializeContests();
   initializeProfile();
+  initializeAiAssistant();
 
-  enableToggle.addEventListener('change', function() {
+  enableToggle.addEventListener('change', function () {
     const enabled = enableToggle.checked;
     console.log('Toggle clicked, enabled:', enabled);
-    
+
     chrome.runtime.sendMessage({
       action: 'toggle',
       enabled: enabled
-    }, function(response) {
+    }, function (response) {
       if (chrome.runtime.lastError) {
         console.error('Runtime error:', chrome.runtime.lastError);
         showNotification('Error toggling focus mode. Please try again.', 'error');
         enableToggle.checked = !enabled;
         return;
       }
-      
+
       if (response && response.success) {
         console.log('Toggle successful');
         updateStatus(enabled);
-        
+
         // Check all tabs immediately
         chrome.runtime.sendMessage({
           action: 'checkAllTabs',
@@ -41,14 +42,14 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   addDomainBtn.addEventListener('click', addCustomDomain);
-  domainInput.addEventListener('keypress', function(e) {
+  domainInput.addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
       addCustomDomain();
     }
   });
 
   function initializePopup() {
-    chrome.runtime.sendMessage({ action: 'getStatus' }, function(response) {
+    chrome.runtime.sendMessage({ action: 'getStatus' }, function (response) {
       enableToggle.checked = response.enabled ?? false;
     });
     loadCustomDomains();
@@ -64,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function addCustomDomain() {
     const domain = domainInput.value.trim().toLowerCase();
-    
+
     if (!domain) {
       showNotification('Please enter a domain name', 'error');
       return;
@@ -80,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.runtime.sendMessage({
       action: 'addCustomDomain',
       domain: domain
-    }, function(response) {
+    }, function (response) {
       if (response.success) {
         domainInput.value = '';
         loadCustomDomains();
@@ -90,14 +91,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function loadCustomDomains() {
-    chrome.runtime.sendMessage({ action: 'getCustomDomains' }, function(response) {
+    chrome.runtime.sendMessage({ action: 'getCustomDomains' }, function (response) {
       displayCustomDomains(response.domains);
     });
   }
 
   function displayCustomDomains(domains) {
     customDomainsContainer.innerHTML = '';
-    
+
     domains.forEach(domain => {
       const domainItem = document.createElement('div');
       domainItem.className = 'domain-item';
@@ -109,32 +110,33 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('.remove-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function () {
         removeCustomDomain(this.dataset.domain);
       });
     });
   }
 
   function removeCustomDomain(domain) {
-    chrome.storage.sync.get(['customDomains'], function(result) {
-      const customDomains = result.customDomains || [];
-      const updatedDomains = customDomains.filter(d => d !== domain);
-      
-      chrome.storage.sync.set({ customDomains: updatedDomains }, function() {
+    chrome.runtime.sendMessage({
+      action: 'removeCustomDomain',
+      domain: domain
+    }, function (response) {
+      if (response && response.success) {
         loadCustomDomains();
         showNotification('Domain removed', 'success');
-        
-        chrome.runtime.sendMessage({
-          action: 'updateRules'
-        });
-      });
+      }
     });
   }
 
 
-  function showNotification(message, type) {
+  function showNotification(message, type = 'success') {
+    // Remove existing notification to prevent spam
+    const existing = document.getElementById('fokus-notification');
+    if (existing) existing.remove();
+
     // Create notification element
     const notification = document.createElement('div');
+    notification.id = 'fokus-notification';
     notification.style.cssText = `
       position: fixed;
       top: 10px;
@@ -173,10 +175,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   `;
   document.head.appendChild(style);
-  
+
   function initializeContests() {
     loadContests();
-    
+
+    const remindAllBtn = document.getElementById('remindAllBtn');
+    if (remindAllBtn) {
+      remindAllBtn.addEventListener('click', () => {
+        const unsetBtns = document.querySelectorAll('#contestsList .reminder-btn:not(.active)');
+        if (unsetBtns.length === 0) {
+          showNotification('All reminders are already set!', 'success');
+          return;
+        }
+
+        // Programmatically click all unset buttons
+        unsetBtns.forEach(btn => btn.click());
+        showNotification('Reminders set for all upcoming contests!', 'success');
+        updateRemindAllButtonState();
+      });
+    }
+
     const refreshBtn = document.createElement('button');
     refreshBtn.className = 'refresh-btn';
     refreshBtn.textContent = '🔄 Refresh Contests';
@@ -188,111 +206,104 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshBtn.textContent = '🔄 Refresh Contests';
       });
     };
-    
+
     document.getElementById('contestsContainer').appendChild(refreshBtn);
   }
-  
+
   async function loadContests(forceRefresh = false) {
     const contestsLoading = document.getElementById('contestsLoading');
     const contestsList = document.getElementById('contestsList');
-    
+
     if (contestsLoading) {
       contestsLoading.style.display = 'block';
     }
     contestsList.innerHTML = '';
-    
+
     try {
       const contests = await fetchContests(forceRefresh);
-      
+
       if (contestsLoading) {
         contestsLoading.style.display = 'none';
       }
-      
+
       if (contests.length === 0) {
         contestsList.innerHTML = '<div class="no-contests">No upcoming contests found</div>';
         return;
       }
-      
+
       contests.forEach(contest => {
         const contestItem = createContestElement(contest);
-        if (contestItem) { // Only append if contest element was created successfully
+        if (contestItem) {
           contestsList.appendChild(contestItem);
         }
       });
-      
+
+      // Update Remind All button state after rendering and checking storage
+      setTimeout(updateRemindAllButtonState, 100);
+
     } catch (error) {
-        // Error loading contests
       if (contestsLoading) {
         contestsLoading.style.display = 'none';
       }
       contestsList.innerHTML = '<div class="no-contests">Failed to load contests</div>';
     }
   }
-  
+
   async function fetchContests(forceRefresh = false) {
-    // Check cache first
     const cached = await getCachedContests();
     if (!forceRefresh && cached && cached.contests && cached.timestamp) {
       const cacheAge = Date.now() - cached.timestamp;
-      const cacheTimeout = 30 * 60 * 1000; // 30 minutes
-      
+      const cacheTimeout = 30 * 60 * 1000;
+
       if (cacheAge < cacheTimeout) {
         return cached.contests;
       }
     }
-    
+
     const contests = [];
-    
-    // Fetch from all platforms
+
     try {
       const [codeforces, codechef] = await Promise.allSettled([
         fetchCodeforces(),
         fetchCodeChef()
       ]);
-      
+
       if (codeforces.status === 'fulfilled') {
         contests.push(...codeforces.value);
       } else {
-        // Codeforces fetch failed, using fallback data
         contests.push(...getFallbackCodeforces());
       }
-      
+
       if (codechef.status === 'fulfilled') {
         contests.push(...codechef.value);
       } else {
-        // CodeChef fetch failed, using fallback data
         contests.push(...getFallbackCodeChef());
       }
-      
-      // Add static contests for demonstration
+
       contests.push(...getStaticContests());
-      
-      // Sort by start time
+
       contests.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-      
-      // Filter future contests only
+
       const now = new Date();
       const futureContests = contests.filter(contest => new Date(contest.startTime) > now);
-      
-      // Cache the results
+
       await cacheContests(futureContests);
-      
-      return futureContests.slice(0, 10); // Limit to 10 contests
+
+      return futureContests.slice(0, 10);
     } catch (error) {
-      // Error fetching contests
       return getStaticContests();
     }
   }
-  
+
   async function fetchCodeforces() {
     try {
       const response = await fetch('https://codeforces.com/api/contest.list');
       const data = await response.json();
-      
+
       if (data.status !== 'OK') {
         throw new Error('Codeforces API error');
       }
-      
+
       return data.result
         .filter(contest => contest.phase === 'BEFORE')
         .slice(0, 5)
@@ -306,19 +317,17 @@ document.addEventListener('DOMContentLoaded', function() {
           type: contest.type || 'Contest'
         }));
     } catch (error) {
-      // Codeforces fetch error
       return [];
     }
   }
-  
+
   async function fetchCodeChef() {
     try {
       const response = await fetch('https://www.codechef.com/api/list/contests/all?sort_by=START&sorting_order=asc&offset=0&mode=all');
       const data = await response.json();
-      
+
       const contests = [];
-      
-      // Add future contests
+
       if (data.future_contests) {
         Object.values(data.future_contests).slice(0, 5).forEach(contest => {
           contests.push({
@@ -332,25 +341,21 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         });
       }
-      
+
       return contests;
     } catch (error) {
-      // CodeChef fetch error
       return [];
     }
   }
-  
+
   function createContestElement(contest) {
-    // Ensure contest has required properties
     if (!contest || !contest.id || !contest.title || !contest.startTime) {
-      // Contest missing required properties
       return null;
     }
-    
+
     const contestItem = document.createElement('div');
     contestItem.className = 'contest-item';
     contestItem.onclick = (e) => {
-      // Don't open contest if clicking on reminder button
       if (e.target.closest('.reminder-btn')) {
         return;
       }
@@ -358,10 +363,10 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: contest.url });
       }
     };
-    
+
     const timeUntil = getTimeUntilContest(contest.startTime);
     const status = getContestStatus(contest.startTime, contest.duration || 0);
-    
+
     contestItem.innerHTML = `
       <div class="contest-header">
         <div class="contest-title">${contest.title}</div>
@@ -372,28 +377,27 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="contest-countdown ${status}">${timeUntil}</div>
       </div>
     `;
-    
-    // Add reminder button to bottom-left position
+
     const reminderBtn = createReminderButton(contest);
     const reminderContainer = contestItem.querySelector('.reminder-button-container');
     reminderContainer.appendChild(reminderBtn);
-    
+
     return contestItem;
   }
-  
+
   function getTimeUntilContest(startTime) {
     const now = new Date();
     const start = new Date(startTime);
     const diff = start - now;
-    
+
     if (diff <= 0) {
       return 'Started';
     }
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (days > 0) {
       return `${days}d ${hours}h`;
     } else if (hours > 0) {
@@ -402,13 +406,13 @@ document.addEventListener('DOMContentLoaded', function() {
       return `${minutes}m`;
     }
   }
-  
-  
+
+
   function getContestStatus(startTime, duration) {
     const now = new Date();
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 1000);
-    
+
     if (now < start) {
       return 'upcoming';
     } else if (now >= start && now <= end) {
@@ -417,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return 'ended';
     }
   }
-  
+
   async function getCachedContests() {
     return new Promise((resolve) => {
       chrome.storage.local.get(['contestsCache'], (result) => {
@@ -425,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
-  
+
   async function cacheContests(contests) {
     return new Promise((resolve) => {
       chrome.storage.local.set({
@@ -436,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, resolve);
     });
   }
-  
+
   function getFallbackCodeforces() {
     const now = new Date();
     return [
@@ -444,14 +448,14 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'cf-demo-1',
         title: 'Codeforces Round #XX (Div. 2)',
         platform: 'codeforces',
-        startTime: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
-        duration: 7200, // 2 hours
+        startTime: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        duration: 7200,
         url: 'https://codeforces.com/contests',
         type: 'Contest'
       }
     ];
   }
-  
+
   function getFallbackCodeChef() {
     const now = new Date();
     return [
@@ -459,14 +463,14 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'cc-demo-1',
         title: 'CodeChef Starters',
         platform: 'codechef',
-        startTime: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-        duration: 10800, // 3 hours
+        startTime: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        duration: 10800,
         url: 'https://www.codechef.com/contests',
         type: 'Contest'
       }
     ];
   }
-  
+
   function getStaticContests() {
     const now = new Date();
     return [
@@ -474,8 +478,8 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'lc-weekly',
         title: 'LeetCode Weekly Contest',
         platform: 'leetcode',
-        startTime: getNextSunday(now, 10, 30).toISOString(), // Next Sunday 10:30 AM
-        duration: 5400, // 1.5 hours
+        startTime: getNextSunday(now, 10, 30).toISOString(),
+        duration: 5400,
         url: 'https://leetcode.com/contest/',
         type: 'Weekly Contest'
       },
@@ -483,8 +487,8 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'lc-biweekly',
         title: 'LeetCode Biweekly Contest',
         platform: 'leetcode',
-        startTime: getNextSaturday(now, 20, 30).toISOString(), // Next Saturday 8:30 PM
-        duration: 5400, // 1.5 hours
+        startTime: getNextSaturday(now, 20, 30).toISOString(),
+        duration: 5400,
         url: 'https://leetcode.com/contest/',
         type: 'Biweekly Contest'
       },
@@ -492,44 +496,45 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'ac-beginner',
         title: 'AtCoder Beginner Contest',
         platform: 'atcoder',
-        startTime: getNextSaturday(now, 21, 0).toISOString(), // Next Saturday 9:00 PM
-        duration: 6000, // 100 minutes
+        startTime: getNextSaturday(now, 21, 0).toISOString(),
+        duration: 6000,
         url: 'https://atcoder.jp/contests/',
         type: 'ABC'
       }
     ];
   }
-  
+
   function getNextSunday(date, hour = 0, minute = 0) {
     const result = new Date(date);
     result.setDate(result.getDate() + (7 - result.getDay()) % 7);
-    if (result.getDay() === 0 && result < date) {
+    result.setHours(hour, minute, 0, 0);
+    if (result <= date) {
       result.setDate(result.getDate() + 7);
     }
-    result.setHours(hour, minute, 0, 0);
     return result;
   }
-  
+
   function getNextSaturday(date, hour = 0, minute = 0) {
     const result = new Date(date);
     result.setDate(result.getDate() + (6 - result.getDay()) % 7);
-    if (result.getDay() === 6 && result < date) {
+    result.setHours(hour, minute, 0, 0);
+    if (result <= date) {
       result.setDate(result.getDate() + 7);
     }
-    result.setHours(hour, minute, 0, 0);
     return result;
   }
-  
+
+  // ===========================
   // Profile functionality
+  // ===========================
   function initializeProfile() {
     loadProfile();
-    
     document.getElementById('saveProfile').addEventListener('click', handleSaveProfile);
     document.getElementById('signOut').addEventListener('click', handleSignOut);
   }
-  
+
   function loadProfile() {
-    chrome.storage.sync.get(['userProfile'], function(result) {
+    chrome.storage.sync.get(['userProfile'], function (result) {
       if (result.userProfile) {
         displayProfile(result.userProfile);
       } else {
@@ -537,19 +542,19 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
-  
+
   function handleSaveProfile() {
     const displayName = document.getElementById('displayName').value.trim();
     const codeforcesUsername = document.getElementById('codeforcesUsername').value.trim();
     const codechefUsername = document.getElementById('codechefUsername').value.trim();
     const leetcodeUsername = document.getElementById('leetcodeUsername').value.trim();
     const atcoderUsername = document.getElementById('atcoderUsername').value.trim();
-    
+
     if (!displayName && !codeforcesUsername && !codechefUsername && !leetcodeUsername && !atcoderUsername) {
       showNotification('Please enter your name or at least one username', 'error');
       return;
     }
-    
+
     const profile = {
       type: 'manual',
       usernames: {
@@ -559,54 +564,55 @@ document.addEventListener('DOMContentLoaded', function() {
         atcoder: atcoderUsername
       },
       displayName: displayName || 'Coder',
-      email: '', // Remove default 'Local Profile' text
+      email: '',
       avatar: ''
     };
-    
-    chrome.storage.sync.set({ userProfile: profile }, function() {
+
+    chrome.storage.sync.set({ userProfile: profile }, function () {
       showNotification('Profile saved successfully!', 'success');
       displayProfile(profile);
     });
   }
-  
+
   function handleSignOut() {
-    chrome.storage.sync.remove(['userProfile'], function() {
+    chrome.storage.sync.remove(['userProfile'], function () {
       showNotification('Signed out successfully', 'success');
       showAuthSection();
     });
   }
-  
+
   function showAuthSection() {
     document.getElementById('authSection').style.display = 'block';
     document.getElementById('profileDisplay').style.display = 'none';
-    
-    // Clear input fields
+
     document.getElementById('displayName').value = '';
     document.getElementById('codeforcesUsername').value = '';
     document.getElementById('codechefUsername').value = '';
     document.getElementById('leetcodeUsername').value = '';
     document.getElementById('atcoderUsername').value = '';
   }
-  
+
   function displayProfile(profile) {
     document.getElementById('authSection').style.display = 'none';
     document.getElementById('profileDisplay').style.display = 'block';
-    
-    // Set profile info
+
     const displayName = profile.displayName || 'Coder';
-    
-    // General profile display logic
-    const firstName = displayName.split(' ')[0]; // Get first word as first name
+    const firstName = displayName.split(' ')[0];
     const profileTitle = `${firstName}'s Profile`;
-    const usernameHandle = `@${displayName.toLowerCase().replace(/\s+/g, '')}`; // Remove spaces and lowercase
-    
+    const usernameHandle = `@${displayName.toLowerCase().replace(/\s+/g, '')}`;
+
     document.getElementById('profileName').textContent = profileTitle;
     document.getElementById('profileEmail').textContent = usernameHandle;
-    
-    // Handle avatar
+
+    document.getElementById('displayName').value = profile.displayName || '';
+    document.getElementById('codeforcesUsername').value = profile.usernames?.codeforces || '';
+    document.getElementById('codechefUsername').value = profile.usernames?.codechef || '';
+    document.getElementById('leetcodeUsername').value = profile.usernames?.leetcode || '';
+    document.getElementById('atcoderUsername').value = profile.usernames?.atcoder || '';
+
     const profilePhoto = document.getElementById('profilePhoto');
     const profileInitials = document.getElementById('profileInitials');
-    
+
     if (profile.avatar) {
       profilePhoto.src = profile.avatar;
       profilePhoto.style.display = 'block';
@@ -616,23 +622,20 @@ document.addEventListener('DOMContentLoaded', function() {
       profileInitials.style.display = 'flex';
       profileInitials.textContent = displayName.charAt(0).toUpperCase();
     }
-    
-    // Update platform usernames
+
     if (profile.usernames) {
       updatePlatformDisplay('codeforces', profile.usernames.codeforces);
       updatePlatformDisplay('codechef', profile.usernames.codechef);
       updatePlatformDisplay('leetcode', profile.usernames.leetcode);
       updatePlatformDisplay('atcoder', profile.usernames.atcoder);
-      
-      // Fetch ratings
       fetchUserRatings(profile.usernames);
     }
   }
-  
+
   function updatePlatformDisplay(platform, username) {
     const usernameElement = document.getElementById(`${platform}DisplayUsername`);
     const ratingElement = document.getElementById(`${platform}Rating`);
-    
+
     if (username) {
       usernameElement.textContent = username;
       ratingElement.textContent = 'Loading...';
@@ -643,35 +646,22 @@ document.addEventListener('DOMContentLoaded', function() {
       ratingElement.className = '';
     }
   }
-  
+
   async function fetchUserRatings(usernames) {
-    // Fetch ratings for each platform
-    if (usernames.codeforces) {
-      fetchPlatformRating('codeforces', usernames.codeforces);
-    }
-    
-    if (usernames.codechef) {
-      fetchPlatformRating('codechef', usernames.codechef);
-    }
-    
-    if (usernames.leetcode) {
-      fetchPlatformRating('leetcode', usernames.leetcode);
-    }
-    
-    if (usernames.atcoder) {
-      fetchPlatformRating('atcoder', usernames.atcoder);
-    }
+    if (usernames.codeforces) fetchPlatformRating('codeforces', usernames.codeforces);
+    if (usernames.codechef) fetchPlatformRating('codechef', usernames.codechef);
+    if (usernames.leetcode) fetchPlatformRating('leetcode', usernames.leetcode);
+    if (usernames.atcoder) fetchPlatformRating('atcoder', usernames.atcoder);
   }
-  
+
   function fetchPlatformRating(platform, username) {
-    // Use background script to fetch ratings (to avoid CORS)
     chrome.runtime.sendMessage({
       action: 'fetchRating',
       platform: platform,
       username: username
-    }, function(response) {
+    }, function (response) {
       const ratingElement = document.getElementById(`${platform}Rating`);
-      
+
       if (response && response.success) {
         const data = response.data;
         updateRatingDisplay(platform, data);
@@ -683,18 +673,16 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
-  
+
   function updateRatingDisplay(platform, data) {
     const ratingElement = document.getElementById(`${platform}Rating`);
-    
+
     if (typeof data === 'string') {
-      // Handle error or status messages
       ratingElement.textContent = data;
       ratingElement.className = data.includes('Error') || data.includes('not found') ? 'platform-error' : 'platform-loading';
       return;
     }
-    
-    // Handle N/A or fallback responses
+
     if (data && (data.rating === 'N/A' || data.rating === 'API Error')) {
       ratingElement.textContent = data.rating === 'API Error' ? 'Error' : 'N/A';
       ratingElement.className = 'platform-error';
@@ -702,8 +690,7 @@ document.addEventListener('DOMContentLoaded', function() {
       ratingElement.title = 'Rating not available - API may be down';
       return;
     }
-    
-    // Handle Network Error or API timeout
+
     if (data && (data.rating === 'Network Error' || data.rating === 'Request timeout')) {
       ratingElement.textContent = 'Network Error';
       ratingElement.className = 'platform-error';
@@ -711,8 +698,7 @@ document.addEventListener('DOMContentLoaded', function() {
       ratingElement.title = 'Network error - please check your connection';
       return;
     }
-    
-    // Handle different platform data formats
+
     switch (platform) {
       case 'codeforces':
         if (data.rating && data.rating !== 'Unrated') {
@@ -721,15 +707,13 @@ document.addEventListener('DOMContentLoaded', function() {
           if (data.maxRating && data.maxRating !== data.rating) {
             ratingElement.title = `Current: ${data.rating}, Max: ${data.maxRating}`;
           }
-          
-          // All ratings in extension green
-          ratingElement.style.color = '#10B981'; // Extension green for all ratings
+          ratingElement.style.color = '#10B981';
         } else {
           ratingElement.textContent = 'Unrated';
           ratingElement.className = 'platform-loading';
         }
         break;
-        
+
       case 'codechef':
         if (data.rating && data.rating !== 'Unrated') {
           ratingElement.textContent = data.rating;
@@ -737,15 +721,13 @@ document.addEventListener('DOMContentLoaded', function() {
           if (data.stars > 0) {
             ratingElement.title = `${data.stars} stars`;
           }
-          
-          // All ratings in extension green
-          ratingElement.style.color = '#10B981'; // Extension green for all ratings
+          ratingElement.style.color = '#10B981';
         } else {
           ratingElement.textContent = 'Unrated';
           ratingElement.className = 'platform-loading';
         }
         break;
-        
+
       case 'leetcode':
         if (data.rating && data.rating !== 'Unrated' && data.rating !== 'unrated') {
           const rating = typeof data.rating === 'number' ? Math.round(data.rating) : data.rating;
@@ -754,15 +736,13 @@ document.addEventListener('DOMContentLoaded', function() {
           if (data.totalSolved) {
             ratingElement.title = `Rating: ${rating}, Problems solved: ${data.totalSolved}`;
           }
-          
-          // All ratings in extension green
-          ratingElement.style.color = '#10B981'; // Extension green for all ratings
+          ratingElement.style.color = '#10B981';
         } else {
           ratingElement.textContent = 'unrated';
           ratingElement.className = 'platform-loading';
         }
         break;
-        
+
       case 'atcoder':
         if (data.rating && data.rating !== 'Unrated') {
           ratingElement.textContent = data.rating;
@@ -773,29 +753,28 @@ document.addEventListener('DOMContentLoaded', function() {
           if (data.maxRating && data.maxRating !== data.rating) {
             ratingElement.title = `Current: ${data.rating}, Max: ${data.maxRating}, Color: ${data.color}`;
           }
-          
-          // All ratings in extension green
-          ratingElement.style.color = '#10B981'; // Extension green for all ratings
+          ratingElement.style.color = '#10B981';
         } else {
           ratingElement.textContent = 'Unrated';
           ratingElement.className = 'platform-loading';
         }
         break;
-        
+
       default:
         ratingElement.textContent = '-';
         ratingElement.className = '';
     }
   }
-  
+
+  // ===========================
   // Contest Reminder Functions
+  // ===========================
   function createReminderButton(contest) {
     const reminderBtn = document.createElement('button');
     reminderBtn.className = 'reminder-btn';
     reminderBtn.title = 'Set reminder for this contest';
     reminderBtn.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
-    
-    // Always check reminder status for all contests
+
     if (contest && contest.id) {
       checkReminderStatus(contest.id).then(isSet => {
         if (isSet) {
@@ -803,21 +782,18 @@ document.addEventListener('DOMContentLoaded', function() {
           reminderBtn.innerHTML = `<span class="reminder-icon">✓</span>Set`;
           reminderBtn.title = 'Reminder set - click to remove';
         }
-      }).catch(error => {
-        // Error checking reminder status
-        // Default to unset state
-      });
+      }).catch(() => { });
     }
-    
+
     reminderBtn.onclick = (e) => {
       e.stopPropagation();
       e.preventDefault();
       toggleReminder(contest, reminderBtn);
     };
-    
+
     return reminderBtn;
   }
-  
+
   async function checkReminderStatus(contestId) {
     return new Promise((resolve) => {
       chrome.storage.local.get(['contestReminders'], (result) => {
@@ -826,35 +802,50 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
-  
+
   async function toggleReminder(contest, buttonElement) {
     const isCurrentlySet = buttonElement.classList.contains('active');
-    
+
     if (isCurrentlySet) {
-      // Remove reminder
       await removeReminder(contest.id);
       buttonElement.classList.remove('active');
       buttonElement.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
       buttonElement.title = 'Set reminder for this contest';
       showNotification('Reminder removed', 'success');
     } else {
-      // Set reminder
       await setReminder(contest);
       buttonElement.classList.add('active');
       buttonElement.innerHTML = `<span class="reminder-icon">✓</span>Set`;
       buttonElement.title = 'Reminder set - click to remove';
       showNotification('Reminder set! You\'ll be notified 1 hour before the contest.', 'success');
     }
+
+    updateRemindAllButtonState();
   }
-  
+
+  function updateRemindAllButtonState() {
+    const remindAllBtn = document.getElementById('remindAllBtn');
+    if (!remindAllBtn) return;
+
+    const unsetBtns = document.querySelectorAll('#contestsList .reminder-btn:not(.active)');
+    const allBtns = document.querySelectorAll('#contestsList .reminder-btn');
+
+    if (allBtns.length > 0 && unsetBtns.length === 0) {
+      remindAllBtn.classList.add('all-set');
+      remindAllBtn.innerHTML = '✓ All Set';
+    } else {
+      remindAllBtn.classList.remove('all-set');
+      remindAllBtn.innerHTML = '🔔 Remind All';
+    }
+  }
+
   async function setReminder(contest) {
     const contestStart = new Date(contest.startTime);
     const now = new Date();
-    const reminderTime = new Date(contestStart.getTime() - (1 * 60 * 60 * 1000)); // 1 hour before
-    
-    // Don't set reminder if contest starts in less than 1 hour or if reminder time has passed
+    const reminderTime = new Date(contestStart.getTime() - (1 * 60 * 60 * 1000));
+
     if (reminderTime <= now) {
-      const timeUntilContest = Math.floor((contestStart - now) / (1000 * 60)); // minutes
+      const timeUntilContest = Math.floor((contestStart - now) / (1000 * 60));
       if (timeUntilContest <= 0) {
         showNotification('Contest has already started', 'error');
         return;
@@ -863,8 +854,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
     }
-    
-    // Store reminder in local storage
+
     return new Promise((resolve) => {
       chrome.storage.local.get(['contestReminders'], (result) => {
         const reminders = result.contestReminders || {};
@@ -877,9 +867,8 @@ document.addEventListener('DOMContentLoaded', function() {
           reminderTime: reminderTime.toISOString(),
           alarmName: `contest-${contest.id}`
         };
-        
+
         chrome.storage.local.set({ contestReminders: reminders }, () => {
-          // Set chrome alarm
           chrome.runtime.sendMessage({
             action: 'setContestReminder',
             contest: contest,
@@ -891,17 +880,16 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
-  
+
   async function removeReminder(contestId) {
     return new Promise((resolve) => {
       chrome.storage.local.get(['contestReminders'], (result) => {
         const reminders = result.contestReminders || {};
         const reminder = reminders[contestId];
-        
+
         if (reminder) {
           delete reminders[contestId];
           chrome.storage.local.set({ contestReminders: reminders }, () => {
-            // Remove chrome alarm
             chrome.runtime.sendMessage({
               action: 'removeContestReminder',
               contestId: contestId,
@@ -916,6 +904,193 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
-  
+
+  // ===========================
+  // AI Assistant (Backend-powered)
+  // ===========================
+  const AI_SERVER_URL = 'http://localhost:3001';
+
+  function initializeAiAssistant() {
+    const fab = document.getElementById('aiFab');
+    const modal = document.getElementById('aiModal');
+    const overlay = document.getElementById('aiOverlay');
+    const closeBtn = document.getElementById('aiClose');
+    const sendBtn = document.getElementById('aiSend');
+    const input = document.getElementById('aiInput');
+
+    fab.addEventListener('click', toggleAiModal);
+    closeBtn.addEventListener('click', toggleAiModal);
+    overlay.addEventListener('click', toggleAiModal);
+    sendBtn.addEventListener('click', handleAskAi);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAskAi();
+    });
+  }
+
+  function toggleAiModal() {
+    const modal = document.getElementById('aiModal');
+    const overlay = document.getElementById('aiOverlay');
+    const fab = document.getElementById('aiFab');
+
+    const isOpen = modal.classList.contains('visible');
+
+    if (isOpen) {
+      modal.classList.remove('visible');
+      overlay.classList.remove('visible');
+      fab.classList.remove('active');
+      fab.textContent = '✨';
+    } else {
+      modal.classList.add('visible');
+      overlay.classList.add('visible');
+      fab.classList.add('active');
+      fab.textContent = '✕';
+      document.getElementById('aiInput').focus();
+    }
+  }
+
+  // Lightweight markdown → HTML renderer
+  function renderMarkdown(text) {
+    let html = text;
+    // Escape HTML entities first
+    html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Code blocks (```lang ... ```)
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // Headers (### → h4, ## → h3)  
+    html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+    // Unordered lists
+    html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+    // Ordered lists
+    html = html.replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>');
+    // Paragraphs (double newlines)
+    html = html.replace(/\n\n/g, '</p><p>');
+    // Single newlines → <br> (but not inside pre/code)
+    html = html.replace(/\n/g, '<br>');
+    // Wrap in paragraph
+    html = '<p>' + html + '</p>';
+    // Clean up empty paragraphs
+    html = html.replace(/<p><\/p>/g, '');
+    return html;
+  }
+
+  function addMessage(text, type) {
+    const messagesContainer = document.getElementById('aiMessages');
+
+    // Remove welcome message on first interaction
+    const welcome = messagesContainer.querySelector('.ai-welcome');
+    if (welcome) welcome.remove();
+
+    const msg = document.createElement('div');
+    msg.className = `ai-msg ${type}`;
+
+    // Render markdown for bot messages, plain text for user messages
+    if (type.startsWith('bot') && !type.includes('thinking')) {
+      msg.innerHTML = renderMarkdown(text);
+    } else {
+      msg.textContent = text;
+    }
+
+    messagesContainer.appendChild(msg);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    return msg;
+  }
+
+  async function handleAskAi() {
+    const input = document.getElementById('aiInput');
+    const sendBtn = document.getElementById('aiSend');
+    const question = input.value.trim();
+
+    if (!question) return;
+
+    // Show user message
+    addMessage(question, 'user');
+    input.value = '';
+    sendBtn.disabled = true;
+
+    // Show thinking indicator
+    const thinkingMsg = addMessage('Thinking…', 'bot thinking');
+
+    try {
+      // 1. Get page context from content script (with injection fallback)
+      let pageContext = '';
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+        // Skip system/extension pages
+        if (tab && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+          let contentResponse = null;
+
+          // Try the content script first
+          try {
+            contentResponse = await chrome.tabs.sendMessage(tab.id, { action: 'getPageContent' });
+          } catch (e) {
+            // Content script not loaded — inject one on the fly
+            console.log('Content script not available, injecting...');
+            try {
+              const results = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  const bodyText = document.body.innerText;
+                  const maxLen = 10000;
+                  return {
+                    content: bodyText.length > maxLen ? bodyText.substring(0, maxLen) + '... [Truncated]' : bodyText,
+                    title: document.title,
+                    url: window.location.href
+                  };
+                }
+              });
+              if (results && results[0] && results[0].result) {
+                contentResponse = results[0].result;
+              }
+            } catch (injectErr) {
+              console.log('Script injection also failed:', injectErr.message);
+            }
+          }
+
+          if (contentResponse && contentResponse.content) {
+            pageContext = `Page: "${contentResponse.title}"\nURL: ${contentResponse.url}\n\n${contentResponse.content}`;
+          }
+        }
+      } catch (e) {
+        pageContext = '';
+      }
+
+      // 2. Send to secure backend
+      const response = await fetch(`${AI_SERVER_URL}/api/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: question, context: pageContext })
+      });
+
+      const data = await response.json();
+
+      // Replace thinking message with answer
+      thinkingMsg.remove();
+
+      if (response.ok && data.answer) {
+        addMessage(data.answer, 'bot');
+      } else {
+        addMessage(data.error || 'Failed to get a response.', 'bot error');
+      }
+
+    } catch (err) {
+      thinkingMsg.remove();
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        addMessage('Cannot reach the AI server. Make sure it\'s running:\n\ncd server && npm start', 'bot error');
+      } else {
+        addMessage(`Error: ${err.message}`, 'bot error');
+      }
+    } finally {
+      sendBtn.disabled = false;
+      document.getElementById('aiInput').focus();
+    }
+  }
 
 });

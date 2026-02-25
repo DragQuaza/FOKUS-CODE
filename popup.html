@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <style>
-body {
+    body {
       width: 350px;
       padding: 20px;
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
       margin: 0;
       background: #FFFFFF;
       color: #1A1A1A;
+      position: relative;
+      min-height: 400px;
     }
-    
+
     .header {
       text-align: center;
       margin-bottom: 20px;
       color: #1A1A1A;
     }
-    
+
     .logo {
       font-size: 24px;
       font-weight: bold;
@@ -25,12 +28,12 @@ body {
       color: #10B981;
       text-shadow: 2px 2px 4px rgba(16, 185, 129, 0.3);
     }
-    
+
     .subtitle {
       font-size: 12px;
       opacity: 0.9;
     }
-    
+
     .toggle-section {
       background: #F8F9FA;
       border-radius: 12px;
@@ -38,30 +41,30 @@ body {
       margin-bottom: 16px;
       border: 1px solid #E5E7EB;
     }
-    
+
     .toggle-container {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    
+
     .toggle-label {
       font-weight: 500;
     }
-    
+
     .toggle-switch {
       position: relative;
       display: inline-block;
       width: 60px;
       height: 34px;
     }
-    
+
     .toggle-switch input {
       opacity: 0;
       width: 0;
       height: 0;
     }
-    
+
     .slider {
       position: absolute;
       cursor: pointer;
@@ -73,7 +76,7 @@ body {
       transition: .4s;
       border-radius: 34px;
     }
-    
+
     .slider:before {
       position: absolute;
       content: "";
@@ -85,16 +88,16 @@ body {
       transition: .4s;
       border-radius: 50%;
     }
-    
-    input:checked + .slider {
+
+    input:checked+.slider {
       background-color: #10B981;
     }
-    
-    input:checked + .slider:before {
+
+    input:checked+.slider:before {
       transform: translateX(26px);
     }
-    
-    
+
+
     .custom-domain-section {
       background: #F8F9FA;
       border-radius: 12px;
@@ -102,7 +105,7 @@ body {
       margin-bottom: 16px;
       border: 1px solid #E5E7EB;
     }
-    
+
     .section-title {
       font-weight: 600;
       margin-bottom: 12px;
@@ -110,12 +113,12 @@ body {
       color: #374151;
       letter-spacing: -0.025em;
     }
-    
+
     .input-group {
       display: flex;
       margin-bottom: 10px;
     }
-    
+
     input[type="text"] {
       flex: 1;
       padding: 10px 14px;
@@ -127,13 +130,13 @@ body {
       font-size: 14px;
       font-family: inherit;
     }
-    
+
     input[type="text"]:focus {
       outline: none;
       border-color: #10B981;
       box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
     }
-    
+
     .add-btn {
       padding: 8px 15px;
       background: #10B981;
@@ -145,17 +148,17 @@ body {
       font-weight: 600;
       transition: background-color 0.2s ease;
     }
-    
+
     .add-btn:hover {
       background: #059669;
     }
-    
+
     .domain-list {
       max-height: 100px;
       overflow-y: auto;
       margin-top: 10px;
     }
-    
+
     .domain-item {
       background: #FFFFFF;
       padding: 8px 12px;
@@ -168,7 +171,7 @@ body {
       border: 1px solid #E5E7EB;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
-    
+
     .remove-btn {
       background: #f44336;
       color: white;
@@ -178,26 +181,26 @@ body {
       cursor: pointer;
       font-size: 10px;
     }
-    
+
     .stats {
       background: #2E2E2E;
       border-radius: 10px;
       padding: 15px;
       text-align: center;
     }
-    
+
     .stats-number {
       font-size: 24px;
       font-weight: bold;
       margin-bottom: 5px;
       color: #66BB6A;
     }
-    
+
     .stats-label {
       font-size: 12px;
       opacity: 0.9;
     }
-    
+
     /* AdBlock Statistics Styles */
     .stats-grid {
       display: grid;
@@ -205,7 +208,7 @@ body {
       gap: 10px;
       margin-bottom: 12px;
     }
-    
+
     .stat-item {
       text-align: center;
       padding: 8px;
@@ -213,20 +216,20 @@ body {
       border-radius: 8px;
       border: 1px solid #E5E7EB;
     }
-    
+
     .stat-number {
       font-size: 16px;
       font-weight: 700;
       color: #059669;
       margin-bottom: 2px;
     }
-    
+
     .stat-label {
       font-size: 10px;
       color: #6B7280;
       font-weight: 500;
     }
-    
+
     .reset-stats-btn {
       width: 100%;
       padding: 6px 12px;
@@ -239,12 +242,12 @@ body {
       font-weight: 500;
       transition: all 0.2s ease;
     }
-    
+
     .reset-stats-btn:hover {
       background: #E5E7EB;
       border-color: #9CA3AF;
     }
-    
+
     /* Contests Section Styles */
     .contests-section {
       background: #F8F9FA;
@@ -255,14 +258,14 @@ body {
       overflow-y: auto;
       border: 1px solid #E5E7EB;
     }
-    
+
     .loading {
       text-align: center;
       padding: 20px;
       color: #6B7280;
       font-size: 14px;
     }
-    
+
     .contest-item {
       background: #FFFFFF;
       border-radius: 10px;
@@ -278,19 +281,19 @@ body {
       justify-content: space-between;
       gap: 8px;
     }
-    
+
     .contest-item:hover {
       border-color: #10B981;
       box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
     }
-    
+
     .contest-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 0;
     }
-    
+
     .contest-title {
       font-weight: 600;
       font-size: 14px;
@@ -299,7 +302,7 @@ body {
       flex: 1;
       margin-right: 10px;
     }
-    
+
     .contest-platform {
       background: #10B981;
       color: white;
@@ -310,57 +313,57 @@ body {
       text-transform: uppercase;
       letter-spacing: 0.025em;
     }
-    
+
     .contest-platform.codeforces {
       background: #1F8EFA;
     }
-    
+
     .contest-platform.codechef {
       background: #964B00;
     }
-    
+
     .contest-platform.leetcode {
       background: #FFA116;
     }
-    
+
     .contest-platform.atcoder {
       background: #000000;
     }
-    
+
     .contest-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    
+
     .contest-time {
       display: flex;
       align-items: center;
       gap: 4px;
     }
-    
+
     .contest-duration {
       background: #F3F4F6;
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 500;
     }
-    
+
     .contest-countdown {
       font-weight: 600;
       color: #DC2626;
       font-size: 12px;
       line-height: 1.2;
     }
-    
+
     .contest-countdown.live {
       color: #16A34A;
     }
-    
+
     .contest-countdown.upcoming {
       color: #2563EB;
     }
-    
+
     .no-contests {
       text-align: center;
       padding: 20px;
@@ -368,7 +371,7 @@ body {
       font-size: 14px;
       font-style: italic;
     }
-    
+
     .refresh-btn {
       display: block;
       width: 100%;
@@ -383,12 +386,12 @@ body {
       margin-top: 10px;
       transition: all 0.2s ease;
     }
-    
+
     .refresh-btn:hover {
       background: #E5E7EB;
       border-color: #9CA3AF;
     }
-    
+
     /* Reminder Button Styles */
     .reminder-btn {
       background: #FFA116;
@@ -404,37 +407,82 @@ body {
       white-space: nowrap;
       line-height: 1.1;
     }
-    
+
     .reminder-btn:hover {
       background: #FF8C00;
       transform: translateY(-1px);
     }
-    
+
     .reminder-btn.active {
       background: #16A34A;
     }
-    
+
     .reminder-btn.active:hover {
       background: #059669;
     }
-    
+
     .reminder-icon {
       margin-right: 2px;
     }
-    
+
     .reminder-button-container {
       display: flex;
       align-items: center;
     }
-    
+
     .reminder-status {
       font-size: 9px;
       color: #059669;
       margin-left: 4px;
       font-weight: 500;
     }
-    
+
     /* Reminders Section Styles */
+    .contests-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .remind-all-btn {
+      background: #F59E0B;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .remind-all-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+      background: #D97706;
+    }
+
+    .remind-all-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+    }
+
+    .remind-all-btn.all-set {
+      background: #16A34A;
+      box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+    }
+
+    .remind-all-btn.all-set:hover {
+      transform: none;
+      background: #16A34A;
+      box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+    }
+
     .reminders-section {
       background: #F8F9FA;
       border-radius: 12px;
@@ -442,7 +490,7 @@ body {
       margin-bottom: 16px;
       border: 1px solid #E5E7EB;
     }
-    
+
     .reminder-item {
       background: #FFFFFF;
       border-radius: 8px;
@@ -453,23 +501,23 @@ body {
       justify-content: space-between;
       align-items: center;
     }
-    
+
     .reminder-info {
       flex: 1;
     }
-    
+
     .reminder-title {
       font-weight: 600;
       font-size: 12px;
       color: #1F2937;
       margin-bottom: 2px;
     }
-    
+
     .reminder-time {
       font-size: 10px;
       color: #6B7280;
     }
-    
+
     .reminder-remove {
       background: #EF4444;
       color: white;
@@ -480,11 +528,11 @@ body {
       cursor: pointer;
       transition: background-color 0.2s ease;
     }
-    
+
     .reminder-remove:hover {
       background: #DC2626;
     }
-    
+
     /* Profile Section Styles */
     .profile-section {
       background: #F8F9FA;
@@ -493,7 +541,7 @@ body {
       margin-bottom: 16px;
       border: 1px solid #E5E7EB;
     }
-    
+
     .auth-btn {
       width: 100%;
       padding: 12px 16px;
@@ -508,35 +556,35 @@ body {
       justify-content: center;
       gap: 8px;
     }
-    
+
     .save-btn {
       background: #10B981;
       color: white;
       margin-top: 12px;
     }
-    
+
     .save-btn:hover {
       background: #059669;
     }
-    
+
     .username-inputs {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
-    
+
     .username-inputs input {
       border-radius: 6px;
       border: 1px solid #D1D5DB;
       padding: 8px 12px;
       font-size: 13px;
     }
-    
+
     .username-inputs input:focus {
       border-color: #10B981;
       box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
     }
-    
+
     .profile-header {
       display: flex;
       align-items: center;
@@ -545,20 +593,20 @@ body {
       padding-bottom: 12px;
       border-bottom: 1px solid #E5E7EB;
     }
-    
+
     .profile-avatar {
       position: relative;
       width: 48px;
       height: 48px;
     }
-    
+
     .profile-avatar img {
       width: 100%;
       height: 100%;
       border-radius: 50%;
       object-fit: cover;
     }
-    
+
     .profile-avatar #profileInitials {
       width: 100%;
       height: 100%;
@@ -571,22 +619,22 @@ body {
       font-weight: bold;
       font-size: 18px;
     }
-    
+
     .profile-info {
       flex: 1;
     }
-    
+
     .profile-info #profileName {
       font-weight: 600;
       font-size: 14px;
       color: #1F2937;
     }
-    
+
     .profile-info #profileEmail {
       font-size: 12px;
       color: #6B7280;
     }
-    
+
     .sign-out-btn {
       padding: 6px 12px;
       background: #F3F4F6;
@@ -597,17 +645,17 @@ body {
       font-size: 11px;
       transition: all 0.2s ease;
     }
-    
+
     .sign-out-btn:hover {
       background: #E5E7EB;
     }
-    
+
     .platforms-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
-    
+
     .platform-card {
       background: #FFFFFF;
       border: 1px solid #E5E7EB;
@@ -617,20 +665,20 @@ body {
       position: relative;
       overflow: hidden;
     }
-    
+
     .platform-card:hover {
       border-color: #10B981;
       box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
       transform: translateY(-1px);
     }
-    
+
     .platform-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
-    
+
     .platform-name {
       font-weight: 600;
       font-size: 10px;
@@ -639,7 +687,7 @@ body {
       align-items: center;
       gap: 3px;
     }
-    
+
     .platform-name::before {
       content: '';
       width: 6px;
@@ -647,7 +695,7 @@ body {
       border-radius: 50%;
       background: #10B981;
     }
-    
+
     .platform-rating {
       font-weight: 700;
       font-size: 11px;
@@ -655,7 +703,7 @@ body {
       text-align: right;
       line-height: 1.2;
     }
-    
+
     .platform-username {
       font-size: 9px;
       color: #6B7280;
@@ -664,25 +712,25 @@ body {
       text-overflow: ellipsis;
       margin-top: 2px;
     }
-    
+
     .rating-stars {
       display: flex;
       align-items: center;
       gap: 1px;
       margin-bottom: 1px;
     }
-    
+
     .star {
       color: #FFD700;
       font-size: 10px;
       text-shadow: 0 0 2px rgba(255, 215, 0, 0.5);
     }
-    
+
     .rating-number {
       font-size: 10px;
       font-weight: 600;
     }
-    
+
     .rating-info {
       display: flex;
       flex-direction: column;
@@ -706,38 +754,331 @@ body {
       text-overflow: ellipsis;
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    
+
     .platform-loading {
       color: #9CA3AF;
       font-style: italic;
       font-size: 8px;
     }
-    
+
     .platform-error {
       color: #EF4444;
       font-size: 8px;
     }
-    
+
     .platform-card.codechef .platform-error {
       color: #FCA5A5;
     }
-    
-    .platform-card {
-      padding: 8px;
+
+    /* ===================== */
+    /* AI Assistant — FAB + Modal */
+    /* ===================== */
+
+    .ai-fab {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      z-index: 1000;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    
-    .platform-header {
-      margin-bottom: 4px;
+
+    .ai-fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(5, 150, 105, 0.55);
     }
-    
+
+    .ai-fab.active {
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Modal overlay */
+    .ai-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .ai-modal-overlay.visible {
+      display: block;
+    }
+
+    /* Chat modal */
+    .ai-modal {
+      display: none;
+      position: fixed;
+      bottom: 72px;
+      right: 12px;
+      width: 326px;
+      max-height: 400px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px) saturate(180%);
+      border-radius: 16px;
+      border: 1px solid rgba(229, 231, 235, 0.6);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+      z-index: 1001;
+      overflow: hidden;
+      flex-direction: column;
+      animation: slideUp 0.25s ease;
+    }
+
+    .ai-modal.visible {
+      display: flex;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .ai-modal-header {
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .ai-modal-header h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ai-modal-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-modal-close:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 260px;
+      min-height: 100px;
+    }
+
+    .ai-msg {
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      line-height: 1.55;
+      max-width: 92%;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .ai-msg.user {
+      background: #D1FAE5;
+      color: #064E3B;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .ai-msg.bot {
+      background: #F3F4F6;
+      color: #1F2937;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .ai-msg.bot.thinking {
+      color: #9CA3AF;
+      font-style: italic;
+    }
+
+    .ai-msg.bot.error {
+      background: #FEF2F2;
+      color: #991B1B;
+    }
+
+    /* Markdown rendering inside bot messages */
+    .ai-msg.bot code {
+      background: #E5E7EB;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 11.5px;
+      color: #1F2937;
+    }
+
+    .ai-msg.bot pre {
+      background: #1F2937;
+      color: #E5E7EB;
+      padding: 10px 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 6px 0;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .ai-msg.bot pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .ai-msg.bot ul,
+    .ai-msg.bot ol {
+      margin: 4px 0;
+      padding-left: 18px;
+    }
+
+    .ai-msg.bot li {
+      margin-bottom: 3px;
+    }
+
+    .ai-msg.bot strong {
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .ai-msg.bot h1,
+    .ai-msg.bot h2,
+    .ai-msg.bot h3,
+    .ai-msg.bot h4 {
+      margin: 6px 0 3px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .ai-msg.bot h3 {
+      font-size: 13px;
+    }
+
+    .ai-msg.bot h4 {
+      font-size: 12.5px;
+    }
+
+    .ai-msg.bot p {
+      margin: 4px 0;
+    }
+
+    .ai-welcome {
+      text-align: center;
+      color: #9CA3AF;
+      font-size: 12px;
+      padding: 20px 10px;
+      line-height: 1.6;
+    }
+
+    .ai-modal-input-bar {
+      display: flex;
+      padding: 10px 12px;
+      gap: 8px;
+      border-top: 1px solid #E5E7EB;
+      background: #FAFAFA;
+    }
+
+    .ai-modal-input-bar input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background: #FFF;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .ai-modal-input-bar input:focus {
+      border-color: #10B981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .ai-send-btn {
+      padding: 9px 14px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: opacity 0.2s;
+    }
+
+    .ai-send-btn:hover {
+      opacity: 0.9;
+    }
+
+    .ai-send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .ai-modal-footer {
+      padding: 6px 14px 8px;
+      font-size: 10px;
+      color: #9CA3AF;
+      text-align: center;
+      border-top: 1px solid #F3F4F6;
+    }
   </style>
 </head>
+
 <body>
   <div class="header">
-    <div class="logo">💻  FOKUS CODE</div>
+    <div class="logo">💻 FOKUS CODE</div>
     <div class="subtitle">Stay focused on coding</div>
   </div>
-  
+
   <div class="toggle-section">
     <div class="toggle-container">
       <span class="toggle-label">Focus Mode</span>
@@ -748,8 +1089,8 @@ body {
     </div>
     <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;"></div>
   </div>
-  
-  
+
+
   <div class="custom-domain-section">
     <div class="section-title">Add Custom Coding Site</div>
     <div class="input-group">
@@ -758,7 +1099,7 @@ body {
     </div>
     <div class="domain-list" id="customDomains"></div>
   </div>
-  
+
   <div class="profile-section">
     <div class="section-title">👤 Profile</div>
     <div id="profileContainer">
@@ -771,6 +1112,7 @@ body {
             <input type="text" id="leetcodeUsername" placeholder="LeetCode username">
             <input type="text" id="atcoderUsername" placeholder="AtCoder username">
           </div>
+
           <button id="saveProfile" class="auth-btn save-btn">Save Profile</button>
         </div>
       </div>
@@ -821,14 +1163,40 @@ body {
   </div>
 
   <div class="contests-section">
-    <div class="section-title">🏆 Upcoming Contests</div>
+    <div class="section-title contests-title">
+      <span>🏆 Upcoming Contests</span>
+      <button id="remindAllBtn" class="remind-all-btn">🔔 Remind All</button>
+    </div>
     <div id="contestsContainer">
       <div class="loading" id="contestsLoading">Loading contests...</div>
       <div id="contestsList"></div>
     </div>
   </div>
-  
-  
+
+  <!-- AI Assistant: Floating Action Button -->
+  <button class="ai-fab" id="aiFab" title="AI Assistant">✨</button>
+
+  <!-- AI Assistant: Backdrop -->
+  <div class="ai-modal-overlay" id="aiOverlay"></div>
+
+  <!-- AI Assistant: Chat Modal -->
+  <div class="ai-modal" id="aiModal">
+    <div class="ai-modal-header">
+      <h3>✨ AI Assistant</h3>
+      <button class="ai-modal-close" id="aiClose">✕</button>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <div class="ai-welcome">Ask me anything about the page you're viewing. I'll read the content and give you a
+        helpful answer.</div>
+    </div>
+    <div class="ai-modal-input-bar">
+      <input type="text" id="aiInput" placeholder="Ask about this page…">
+      <button class="ai-send-btn" id="aiSend">Send</button>
+    </div>
+
+  </div>
+
   <script src="popup.js"></script>
 </body>
+
 </html>
