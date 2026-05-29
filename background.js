@@ -95,20 +95,72 @@ const ALLOWED_DOMAINS = [
   'wandbox.org'
 ];
 
+const DEFAULT_DISTRACTING_DOMAINS = [
+  'netflix.com',
+  'instagram.com',
+  'facebook.com',
+  'twitter.com',
+  'x.com',
+  'reddit.com',
+  'pinterest.com',
+  'twitch.tv',
+  'linkedin.com',
+  'quora.com',
+  'tiktok.com',
+  'discord.com'
+];
+
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install' || details.reason === 'update') {
-    chrome.storage.sync.get(['enabled', 'customDomains', 'initialized'], (result) => {
+    chrome.storage.sync.get(['enabled', 'customDomains', 'focusStrategy', 'customBlockedDomains', 'removedDefaultDomains', 'initialized'], (result) => {
       const defaults = {
         enabled: result.enabled ?? false,
         customDomains: result.customDomains ?? [],
+        focusStrategy: result.focusStrategy ?? 'blacklist',
+        customBlockedDomains: result.customBlockedDomains ?? [],
+        removedDefaultDomains: result.removedDefaultDomains ?? [],
         initialized: true
       };
 
       chrome.storage.sync.set(defaults);
     });
   }
+  // Setup badge countdown alarm
+  chrome.alarms.create('contest-countdown', { periodInMinutes: 1 });
+  updateContestBadgeCountdown();
+
+  // Enable side panel globally
+  chrome.sidePanel.setOptions({ enabled: true });
+
+  // Register selection context menu for FOKUS AI explanation
+  chrome.contextMenus.create({
+    id: "explain-with-fokus",
+    title: "Explain with FOKUS AI",
+    contexts: ["selection"]
+  });
+
   cleanupExpiredReminders();
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "explain-with-fokus" && info.selectionText) {
+    chrome.storage.local.set({ pendingSelectionText: info.selectionText }, () => {
+      // Open the side panel
+      chrome.sidePanel.open({ windowId: tab.windowId }).then(() => {
+        // Broadcast message in case sidepanel is already open and running
+        chrome.runtime.sendMessage({
+          type: "explain-selection",
+          text: info.selectionText
+        }).catch(() => {
+          // Ignored if sidepanel isn't open/active yet, storage will handle it
+        });
+      }).catch(err => {
+        console.error("Failed to open side panel via context menu:", err);
+      });
+    });
+  }
 });
 
 // Handle messages from popup and content scripts
@@ -116,7 +168,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
     switch (request.action) {
       case 'toggle':
-        handleToggle(request.enabled, sendResponse);
+        handleToggle(request.enabled, request.duration, sendResponse);
         return true;
 
       case 'getStatus':
@@ -133,6 +185,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       case 'removeCustomDomain':
         removeCustomDomain(request.domain, sendResponse);
+        return true;
+
+      case 'addCustomBlockedDomain':
+        addCustomBlockedDomain(request.domain, sendResponse);
+        return true;
+
+      case 'getCustomBlockedDomains':
+        getCustomBlockedDomains(sendResponse);
+        return true;
+
+      case 'removeCustomBlockedDomain':
+        removeCustomBlockedDomain(request.domain, sendResponse);
+        return true;
+
+      case 'getFullBlocklist':
+        getFullBlocklist(sendResponse);
+        return true;
+
+      case 'removeFromBlocklist':
+        removeFromBlocklist(request.domain, sendResponse);
+        return true;
+
+      case 'addToBlocklist':
+        addToBlocklist(request.domain, sendResponse);
+        return true;
+
+      case 'setFocusStrategy':
+        setFocusStrategy(request.strategy, sendResponse);
         return true;
 
       case 'checkDomain':
@@ -159,6 +239,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         checkAllOpenTabs(request.enabled, sendResponse);
         return true;
 
+      case 'updateBadge':
+        updateContestBadgeCountdown();
+        sendResponse({ success: true });
+        return true;
+
       default:
         sendResponse({ success: false, error: 'Unknown action' });
         return true;
@@ -169,11 +254,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-function handleToggle(enabled, sendResponse) {
-  console.log('handleToggle called with enabled:', enabled);
+function handleToggle(enabled, duration, sendResponse) {
+  console.log('handleToggle called with enabled:', enabled, 'duration:', duration);
 
   chrome.storage.sync.set({ enabled: enabled }, () => {
     console.log('Storage set successful, enabled:', enabled);
+
+    // If turning ON with a duration, set up the pomodoro timer
+    if (enabled && duration && duration > 0) {
+      const endTime = Date.now() + (duration * 60 * 1000);
+      chrome.storage.local.set({ pomodoroEndTime: endTime });
+      chrome.alarms.create('pomodoro-end', { when: endTime });
+    } else if (!enabled) {
+      // If turning OFF manually, clear any running timer
+      chrome.storage.local.remove(['pomodoroEndTime']);
+      chrome.alarms.clear('pomodoro-end');
+    }
 
     // Immediately check all open tabs when focus mode is toggled
     chrome.tabs.query({}, (tabs) => {
@@ -198,7 +294,7 @@ function handleToggle(enabled, sendResponse) {
       });
     });
 
-    sendResponse({ success: true });
+    if (sendResponse) sendResponse({ success: true });
   });
 }
 
@@ -213,10 +309,13 @@ function getExtensionStatus(sendResponse) {
 
 // Get all settings
 function getSettings(sendResponse) {
-  chrome.storage.sync.get(['enabled', 'customDomains', 'initialized'], (result) => {
+  chrome.storage.sync.get(['enabled', 'customDomains', 'focusStrategy', 'customBlockedDomains', 'removedDefaultDomains', 'initialized'], (result) => {
     sendResponse({
       enabled: result.initialized ? (result.enabled ?? false) : false,
       customDomains: result.customDomains || [],
+      focusStrategy: result.focusStrategy || 'blacklist',
+      customBlockedDomains: result.customBlockedDomains || [],
+      removedDefaultDomains: result.removedDefaultDomains || [],
       initialized: result.initialized ?? false
     });
   });
@@ -253,9 +352,117 @@ function removeCustomDomain(domain, sendResponse) {
   });
 }
 
+function setFocusStrategy(strategy, sendResponse) {
+  chrome.storage.sync.set({ focusStrategy: strategy }, () => {
+    // Check all open tabs to apply the new strategy immediately
+    chrome.storage.sync.get(['enabled'], (res) => {
+      if (res.enabled) {
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach(tab => {
+            if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+              checkAndBlockTab(tab, true);
+            }
+          });
+        });
+      }
+    });
+    sendResponse({ success: true });
+  });
+}
+
+function addCustomBlockedDomain(domain, sendResponse) {
+  chrome.storage.sync.get(['customBlockedDomains'], (result) => {
+    const customBlockedDomains = result.customBlockedDomains || [];
+    if (!customBlockedDomains.includes(domain)) {
+      customBlockedDomains.push(domain);
+      chrome.storage.sync.set({ customBlockedDomains }, () => {
+        sendResponse({ success: true });
+      });
+    } else {
+      sendResponse({ success: false, error: 'Domain already in blocklist' });
+    }
+  });
+}
+
+function getCustomBlockedDomains(sendResponse) {
+  chrome.storage.sync.get(['customBlockedDomains'], (result) => {
+    sendResponse({ domains: result.customBlockedDomains || [] });
+  });
+}
+
+function removeCustomBlockedDomain(domain, sendResponse) {
+  chrome.storage.sync.get(['customBlockedDomains'], (result) => {
+    const customBlockedDomains = result.customBlockedDomains || [];
+    const filtered = customBlockedDomains.filter(d => d !== domain);
+    chrome.storage.sync.set({ customBlockedDomains: filtered }, () => {
+      sendResponse({ success: true });
+    });
+  });
+}
+
+// Returns the full computed allowed list (defaults minus removed + custom additions)
+function getFullBlocklist(sendResponse) {
+  chrome.storage.sync.get(['customDomains', 'removedDefaultDomains'], (result) => {
+    const customDomains = result.customDomains || [];
+    const removedDefaultDomains = result.removedDefaultDomains || [];
+    
+    const activeDefaults = ALLOWED_DOMAINS.filter(d => !removedDefaultDomains.includes(d));
+    
+    // Mark all as isDefault: false so "DEFAULT" tag is never rendered
+    const blocklist = activeDefaults.map(d => ({ domain: d, isDefault: false }))
+      .concat(customDomains.map(d => ({ domain: d, isDefault: false })));
+    
+    sendResponse({ blocklist: blocklist });
+  });
+}
+
+// Remove from allowed list: if default, add to removedDefaultDomains; if custom, remove from customDomains
+function removeFromBlocklist(domain, sendResponse) {
+  chrome.storage.sync.get(['customDomains', 'removedDefaultDomains'], (result) => {
+    const customDomains = result.customDomains || [];
+    const removedDefaultDomains = result.removedDefaultDomains || [];
+    
+    if (ALLOWED_DOMAINS.includes(domain)) {
+      if (!removedDefaultDomains.includes(domain)) {
+        removedDefaultDomains.push(domain);
+      }
+      chrome.storage.sync.set({ removedDefaultDomains }, () => {
+        sendResponse({ success: true });
+      });
+    } else {
+      const filtered = customDomains.filter(d => d !== domain);
+      chrome.storage.sync.set({ customDomains: filtered }, () => {
+        sendResponse({ success: true });
+      });
+    }
+  });
+}
+
+// Add to allowed list: if default, remove from removedDefaultDomains; if custom, add to customDomains
+function addToBlocklist(domain, sendResponse) {
+  chrome.storage.sync.get(['customDomains', 'removedDefaultDomains'], (result) => {
+    const customDomains = result.customDomains || [];
+    const removedDefaultDomains = result.removedDefaultDomains || [];
+    
+    if (ALLOWED_DOMAINS.includes(domain)) {
+      const filtered = removedDefaultDomains.filter(d => d !== domain);
+      chrome.storage.sync.set({ removedDefaultDomains: filtered }, () => {
+        sendResponse({ success: true });
+      });
+    } else if (customDomains.includes(domain)) {
+      sendResponse({ success: false, error: 'Domain already allowed' });
+    } else {
+      customDomains.push(domain);
+      chrome.storage.sync.set({ customDomains }, () => {
+        sendResponse({ success: true });
+      });
+    }
+  });
+}
+
 // Check if a domain should be blocked
 function checkDomainStatus(hostname, sendResponse) {
-  chrome.storage.sync.get(['enabled', 'customDomains', 'initialized'], (result) => {
+  chrome.storage.sync.get(['enabled', 'customDomains', 'focusStrategy', 'customBlockedDomains', 'removedDefaultDomains', 'initialized'], (result) => {
     try {
       // If not initialized or not enabled, don't block
       if (!result.initialized || !result.enabled) {
@@ -270,16 +477,16 @@ function checkDomainStatus(hostname, sendResponse) {
         return;
       }
 
+      // Whitelist mode — block if NOT in allowed list
       const customDomains = result.customDomains || [];
-      const allAllowedDomains = [...ALLOWED_DOMAINS, ...customDomains];
+      const removedDefaultDomains = result.removedDefaultDomains || [];
+      const activeDefaults = ALLOWED_DOMAINS.filter(d => !removedDefaultDomains.includes(d));
+      const allAllowedDomains = [...activeDefaults, ...customDomains];
 
       // Check if domain is in allowed list
       const isAllowed = allAllowedDomains.some(domain => {
-        // Exact match
         if (hostname === domain) return true;
-        // Subdomain match
         if (hostname.endsWith('.' + domain)) return true;
-        // Contains match (for backwards compatibility)
         if (hostname.includes(domain)) return true;
         return false;
       });
@@ -372,29 +579,29 @@ function checkAndBlockTab(tab, focusEnabled) {
       return;
     }
 
-    chrome.storage.sync.get(['customDomains'], (result) => {
+    chrome.storage.sync.get(['customDomains', 'removedDefaultDomains'], (result) => {
       try {
-        const customDomains = result.customDomains || [];
-        let isAllowed = false;
+        let shouldBlock = false;
 
         if (focusEnabled) {
-          // Focus mode: allow all coding domains + custom domains
-          const allAllowedDomains = [...ALLOWED_DOMAINS, ...customDomains];
-          isAllowed = allAllowedDomains.some(domain => {
-            // Exact match
+          // Whitelist Mode — block if NOT in allowed list
+          const customDomains = result.customDomains || [];
+          const removedDefaultDomains = result.removedDefaultDomains || [];
+          const activeDefaults = ALLOWED_DOMAINS.filter(d => !removedDefaultDomains.includes(d));
+          const allAllowedDomains = [...activeDefaults, ...customDomains];
+          const isAllowed = allAllowedDomains.some(domain => {
             if (hostname === domain) return true;
-            // Subdomain match
             if (hostname.endsWith('.' + domain)) return true;
-            // Contains match (for backwards compatibility)
             if (hostname.includes(domain)) return true;
             return false;
           });
+          shouldBlock = !isAllowed;
         } else {
-          // Default mode: allow all sites
-          isAllowed = true;
+          // Focus mode disabled
+          shouldBlock = false;
         }
 
-        if (!isAllowed) {
+        if (shouldBlock) {
           // Store the original URL before blocking
           chrome.storage.local.set({
             [`blockedUrl_${tab.id}`]: tab.url
@@ -412,9 +619,11 @@ function checkAndBlockTab(tab, focusEnabled) {
           restoreBlockedTab(tab);
         }
       } catch (error) {
+        console.error('Error in storage retrieval for checkAndBlockTab:', error);
       }
     });
   } catch (e) {
+    console.error('Outer error in checkAndBlockTab:', e);
   }
 }
 
@@ -639,7 +848,7 @@ async function fetchCodeChefRating(username) {
 
     // --- Strategy 2: Regex-based HTML parsing ---
     // Look for rating number in common HTML patterns
-    const ratingMatch = html.match(/rating-number[^>]*>(\d+)/i) ||
+    const ratingMatch = html.match(/rating-number[^>]*>\s*(\d+)/i) ||
       html.match(/"currentRating"\s*:\s*(\d+)/) ||
       html.match(/"rating"\s*:\s*"?(\d+)"?/);
 
@@ -657,12 +866,12 @@ async function fetchCodeChefRating(username) {
         }
 
         // Extract global rank
-        const globalRankMatch = html.match(/Global\s*Rank[^<]*<[^>]*>(\d+)/i) ||
+        const globalRankMatch = html.match(/<strong>\s*(\d+)\s*<\/strong>[\s\S]*?Global\s*Rank/i) ||
           html.match(/"globalRank"\s*:\s*"?(\d+)"?/);
         const globalRank = globalRankMatch ? globalRankMatch[1] : 'N/A';
 
         // Extract country rank
-        const countryRankMatch = html.match(/Country\s*Rank[^<]*<[^>]*>(\d+)/i) ||
+        const countryRankMatch = html.match(/<strong>\s*(\d+)\s*<\/strong>[\s\S]*?Country\s*Rank/i) ||
           html.match(/"countryRank"\s*:\s*"?(\d+)"?/);
         const countryRank = countryRankMatch ? countryRankMatch[1] : 'N/A';
 
@@ -945,64 +1154,220 @@ async function fetchAtCoderRating(username) {
 }
 
 
-// Contest Reminder Functions
-function setContestReminder(contest, reminderTime, sendResponse) {
-  const alarmName = `contest-${contest.id}`;
-  const reminderDate = new Date(reminderTime);
+// Auto 1-hour reminders are handled automatically in processContestCountdown.
 
-  // Create chrome alarm
-  chrome.alarms.create(alarmName, {
-    when: reminderDate.getTime()
-  });
-
-  console.log(`Reminder set for ${contest.title} at ${reminderDate.toLocaleString()}`);
-  sendResponse({ success: true });
+function getNextSunday(date, hour = 0, minute = 0) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + (7 - result.getDay()) % 7);
+  result.setHours(hour, minute, 0, 0);
+  if (result <= date) {
+    result.setDate(result.getDate() + 7);
+  }
+  return result;
 }
 
-function removeContestReminder(contestId, alarmName, sendResponse) {
-  // Clear chrome alarm
-  chrome.alarms.clear(alarmName, (wasCleared) => {
-    console.log(`Reminder ${wasCleared ? 'removed' : 'not found'} for contest ${contestId}`);
-    sendResponse({ success: true });
+function getNextSaturday(date, hour = 0, minute = 0) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + (6 - result.getDay()) % 7);
+  result.setHours(hour, minute, 0, 0);
+  if (result <= date) {
+    result.setDate(result.getDate() + 7);
+  }
+  return result;
+}
+
+function updateContestBadgeCountdown() {
+  chrome.storage.local.get(['contestsCache'], (result) => {
+    const cached = result.contestsCache;
+    const now = Date.now();
+
+    if (cached && cached.contests && cached.timestamp && (now - cached.timestamp < 30 * 60 * 1000)) {
+      processContestCountdown(cached.contests);
+    } else {
+      fetchContestsInBackground();
+    }
   });
+}
+
+async function fetchContestsInBackground() {
+  try {
+    const contests = [];
+
+    // Fetch Codeforces
+    try {
+      const response = await fetch('https://codeforces.com/api/contest.list');
+      const data = await response.json();
+      if (data.status === 'OK') {
+        const cfContests = data.result
+          .filter(contest => contest.phase === 'BEFORE')
+          .slice(0, 5)
+          .map(contest => ({
+            id: `cf-${contest.id}`,
+            title: contest.name,
+            platform: 'codeforces',
+            startTime: new Date(contest.startTimeSeconds * 1000).toISOString(),
+            duration: contest.durationSeconds,
+            url: `https://codeforces.com/contestRegistration/${contest.id}`,
+            type: contest.type || 'Contest'
+          }));
+        contests.push(...cfContests);
+      }
+    } catch (e) {
+      console.warn('Failed CF fetch in background:', e);
+    }
+
+    // Fetch CodeChef
+    try {
+      const response = await fetch('https://www.codechef.com/api/list/contests/all?sort_by=START&sorting_order=asc&offset=0&mode=all');
+      const data = await response.json();
+      if (data.future_contests) {
+        Object.values(data.future_contests).slice(0, 5).forEach(contest => {
+          contests.push({
+            id: `cc-${contest.contest_code}`,
+            title: contest.contest_name,
+            platform: 'codechef',
+            startTime: contest.contest_start_date_iso,
+            duration: parseInt(contest.contest_duration) * 60,
+            url: `https://www.codechef.com/${contest.contest_code}`,
+            type: 'Contest'
+          });
+        });
+      }
+    } catch (e) {
+      console.warn('Failed CodeChef fetch in background:', e);
+    }
+
+    // Add LeetCode static contests
+    const now = new Date();
+    contests.push({
+      id: 'lc-weekly',
+      title: 'LeetCode Weekly Contest',
+      platform: 'leetcode',
+      startTime: getNextSunday(now, 10, 30).toISOString(),
+      duration: 5400,
+      url: 'https://leetcode.com/contest/',
+      type: 'Weekly Contest'
+    });
+    contests.push({
+      id: 'lc-biweekly',
+      title: 'LeetCode Biweekly Contest',
+      platform: 'leetcode',
+      startTime: getNextSaturday(now, 20, 30).toISOString(),
+      duration: 5400,
+      url: 'https://leetcode.com/contest/',
+      type: 'Biweekly Contest'
+    });
+
+    contests.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    const futureContests = contests.filter(contest => new Date(contest.startTime) > now);
+
+    // Save to cache
+    chrome.storage.local.set({
+      contestsCache: {
+        contests: futureContests,
+        timestamp: Date.now()
+      }
+    });
+
+    processContestCountdown(futureContests);
+  } catch (error) {
+    console.warn('Error in background fetch:', error);
+  }
+}
+
+function processContestCountdown(contests) {
+  const now = Date.now();
+  const futureContests = contests
+    .map(c => ({ ...c, startTimeDate: new Date(c.startTime) }))
+    .filter(c => c.startTimeDate.getTime() > now)
+    .sort((a, b) => a.startTimeDate - b.startTimeDate);
+
+  if (futureContests.length === 0) {
+    chrome.action.setBadgeText({ text: '' });
+    return;
+  }
+
+  const nextContest = futureContests[0];
+  const diffMs = nextContest.startTimeDate.getTime() - now;
+
+  // --- NEW AUTO-OPEN LOGIC ---
+  futureContests.forEach(contest => {
+    const cDiffMs = contest.startTimeDate.getTime() - now;
+    const cDiffMinutes = Math.floor(cDiffMs / (1000 * 60));
+
+    // Auto-open if it's CF/CC/LC/AC and exactly <= 5 minutes away
+    if ((contest.platform === 'codeforces' || contest.platform === 'codechef' || contest.platform === 'leetcode' || contest.platform === 'atcoder') && cDiffMinutes <= 5 && cDiffMinutes >= 0) {
+      const storageKey = `autoOpened_${contest.id}`;
+      chrome.storage.local.get([storageKey], (result) => {
+        if (!result[storageKey]) {
+          chrome.tabs.create({ url: contest.url });
+          chrome.storage.local.set({ [storageKey]: true });
+          
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon48.png',
+            title: 'Contest Auto-Opener',
+            message: `Opening ${contest.title} - starts in ${cDiffMinutes} minutes!`
+          });
+        }
+      });
+    }
+    // 1-Hour Reminder notification (Opt-out default)
+    if (cDiffMinutes <= 60 && cDiffMinutes >= 59) {
+      const storageKey = `reminded_1h_${contest.id}`;
+      chrome.storage.local.get([storageKey, 'disabledReminders'], (result) => {
+        const disabled = result.disabledReminders || {};
+        if (!result[storageKey] && !disabled[contest.id]) {
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon48.png',
+            title: 'Contest Reminder - FOKUS CODE',
+            message: `${contest.title} starts in 1 hour on ${contest.platform}!`,
+            buttons: [
+              { title: 'Open Contest' },
+              { title: 'Dismiss' }
+            ]
+          }, (notificationId) => {
+            chrome.storage.local.set({
+              [`notification-${notificationId}`]: {
+                contestUrl: contest.url,
+                contestId: contest.id
+              }
+            });
+          });
+          chrome.storage.local.set({ [storageKey]: true });
+        }
+      });
+    }
+  });
+  // ---------------------------
+
+  // 2 hours is 2 * 60 * 60 * 1000 = 7,200,000 ms
+  if (diffMs > 0 && diffMs <= 2 * 60 * 60 * 1000) {
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    let badgeText = '';
+    if (diffMinutes <= 60) {
+      badgeText = `${diffMinutes}m`;
+    } else {
+      const hours = Math.floor(diffMinutes / 60);
+      badgeText = `${hours}h`;
+    }
+
+    chrome.action.setBadgeText({ text: badgeText });
+    chrome.action.setBadgeBackgroundColor({ color: '#EF4444' }); // Red badge color
+  } else {
+    chrome.action.setBadgeText({ text: '' });
+  }
 }
 
 // Handle alarm events
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name.startsWith('contest-')) {
-    const contestId = alarm.name.replace('contest-', '');
-
-    // Get reminder details from storage
-    chrome.storage.local.get(['contestReminders'], (result) => {
-      const reminders = result.contestReminders || {};
-      const reminder = reminders[contestId];
-
-      if (reminder) {
-        // Show notification
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: 'icons/icon48.png',
-          title: 'Contest Reminder - FOKUS CODE',
-          message: `${reminder.title} starts in 1 hour on ${reminder.platform}!`,
-          buttons: [
-            { title: 'Open Contest' },
-            { title: 'Dismiss' }
-          ]
-        }, (notificationId) => {
-          // Store notification ID with contest info for button handling
-          chrome.storage.local.set({
-            [`notification-${notificationId}`]: {
-              contestUrl: reminder.url,
-              contestId: contestId
-            }
-          });
-        });
-
-        // Remove the reminder from storage after showing
-        delete reminders[contestId];
-        chrome.storage.local.set({ contestReminders: reminders });
-      }
-    });
+  if (alarm.name === 'contest-countdown') {
+    updateContestBadgeCountdown();
+  } else if (alarm.name === 'pomodoro-end') {
+    playPomodoroEndChime();
+    // Turn off Focus Mode
+    handleToggle(false, 0, null);
   }
 });
 
@@ -1065,6 +1430,8 @@ function cleanupExpiredReminders() {
   });
 }
 chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create('contest-countdown', { periodInMinutes: 1 });
+  updateContestBadgeCountdown();
   cleanupExpiredReminders();
 });
 
@@ -1076,5 +1443,16 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Export for popup access
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { ALLOWED_DOMAINS };
+}
+
+function playPomodoroEndChime() {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: '🍅 Focus Timer Finished!',
+    message: 'Time is up! Focus Mode has been paused. Great work.',
+    priority: 2,
+    requireInteraction: true
+  });
 }
 

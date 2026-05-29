@@ -37,7 +37,7 @@
     .toggle-section {
       background: #F8F9FA;
       border-radius: 12px;
-      padding: 18px;
+      padding: 14px 16px;
       margin-bottom: 16px;
       border: 1px solid #E5E7EB;
     }
@@ -97,14 +97,150 @@
       transform: translateX(26px);
     }
 
+    /* Gear customize button */
+    .gear-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: #F3F4F6;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      color: #6B7280;
+      transition: all 0.2s ease;
+    }
 
-    .custom-domain-section {
+    .gear-btn:hover {
+      background: #ECFDF5;
+      border-color: #A7F3D0;
+      color: #10B981;
+    }
+
+    .gear-btn svg {
+      transition: transform 0.3s ease;
+    }
+
+    .gear-btn:hover svg {
+      transform: rotate(45deg);
+    }
+
+    /* Two-page view system */
+    #settingsView {
+      display: none;
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #374151;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s ease;
+    }
+
+    .back-btn:hover {
+      color: #10B981;
+    }
+
+    .settings-title {
+      font-weight: 600;
+      font-size: 15px;
+      color: #374151;
+    }
+
+    .settings-card {
       background: #F8F9FA;
       border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 16px;
+      padding: 16px;
       border: 1px solid #E5E7EB;
     }
+
+    .blocklist-count {
+      font-size: 11px;
+      color: #6B7280;
+      margin-bottom: 10px;
+    }
+
+    .domain-list {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .domain-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .domain-list::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 10px;
+    }
+
+    .domain-item {
+      background: #FFFFFF;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #E5E7EB;
+    }
+
+    .domain-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .domain-tag-default {
+      font-size: 9px;
+      font-weight: 600;
+      color: #059669;
+      background: #ECFDF5;
+      padding: 1px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .remove-btn {
+      background: #FEE2E2;
+      color: #EF4444;
+      border: none;
+      border-radius: 5px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s ease;
+    }
+
+    .remove-btn:hover {
+      background: #EF4444;
+      color: white;
+    }
+
+
+
 
     .section-title {
       font-weight: 600;
@@ -153,34 +289,7 @@
       background: #059669;
     }
 
-    .domain-list {
-      max-height: 100px;
-      overflow-y: auto;
-      margin-top: 10px;
-    }
 
-    .domain-item {
-      background: #FFFFFF;
-      padding: 8px 12px;
-      margin: 6px 0;
-      border-radius: 8px;
-      font-size: 13px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border: 1px solid #E5E7EB;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .remove-btn {
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      padding: 2px 6px;
-      cursor: pointer;
-      font-size: 10px;
-    }
 
     .stats {
       background: #2E2E2E;
@@ -778,9 +887,7 @@
       position: fixed;
       bottom: 16px;
       right: 16px;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
+      border-radius: 24px;
       background: linear-gradient(135deg, #10B981, #059669);
       color: white;
       border: none;
@@ -788,20 +895,19 @@
       box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 22px;
+      gap: 6px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
       z-index: 1000;
       transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
     }
 
     .ai-fab:hover {
-      transform: scale(1.1);
+      transform: scale(1.04);
       box-shadow: 0 6px 20px rgba(5, 150, 105, 0.55);
-    }
-
-    .ai-fab.active {
-      background: linear-gradient(135deg, #EF4444, #DC2626);
-      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
     }
 
     /* Modal overlay */
@@ -1017,6 +1123,50 @@
       line-height: 1.6;
     }
 
+    .ai-quick-prompts {
+      display: flex;
+      gap: 6px;
+      padding: 8px 12px;
+      overflow-x: auto;
+      border-top: 1px solid #E5E7EB;
+      background: #FAFAFA;
+      scrollbar-width: none;
+    }
+
+    .ai-quick-prompts::-webkit-scrollbar {
+      display: none;
+    }
+
+    .quick-prompt-btn {
+      flex: 0 0 auto;
+      padding: 6px 12px;
+      border-radius: 14px;
+      background: #FFFFFF;
+      border: 1px solid #D1D5DB;
+      color: #374151;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .quick-prompt-btn:hover {
+      background: #E6F4EA;
+      border-color: #10B981;
+      color: #059669;
+      transform: translateY(-0.5px);
+    }
+
+    .quick-prompt-btn:active {
+      transform: translateY(0);
+    }
+
     .ai-modal-input-bar {
       display: flex;
       padding: 10px 12px;
@@ -1070,10 +1220,72 @@
       text-align: center;
       border-top: 1px solid #F3F4F6;
     }
+
+    /* Inline Timer */
+    .toggle-bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #E5E7EB;
+    }
+
+    .inline-timer-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .inline-timer-input {
+      width: 36px;
+      padding: 3px;
+      font-size: 11px;
+      text-align: center;
+      border: 1px solid #D1D5DB;
+      border-radius: 5px;
+      background: #FFFFFF;
+      font-family: inherit;
+      color: #374151;
+      transition: all 0.2s ease;
+    }
+    
+    .inline-timer-input:focus {
+      outline: none;
+      border-color: #10B981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+    
+    /* Remove arrows from number input */
+    .inline-timer-input::-webkit-outer-spin-button,
+    .inline-timer-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .inline-timer-label {
+      font-size: 10px;
+      color: #6B7280;
+      font-weight: 500;
+    }
+
+    .inline-countdown {
+      font-size: 11px;
+      font-weight: 700;
+      color: #EF4444;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      display: none;
+      background: #FEE2E2;
+      padding: 3px 7px;
+      border-radius: 5px;
+      letter-spacing: 0.5px;
+    }
   </style>
 </head>
 
 <body>
+  <!-- MAIN VIEW -->
+  <div id="mainView">
   <div class="header">
     <div class="logo">💻 FOKUS CODE</div>
     <div class="subtitle">Stay focused on coding</div>
@@ -1087,17 +1299,18 @@
         <span class="slider"></span>
       </label>
     </div>
-    <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;"></div>
-  </div>
-
-
-  <div class="custom-domain-section">
-    <div class="section-title">Add Custom Coding Site</div>
-    <div class="input-group">
-      <input type="text" id="domainInput" placeholder="e.g., codingsite.com">
-      <button id="addDomain" class="add-btn">Add</button>
+    <div class="toggle-bottom-row">
+      <button id="openSettingsBtn" class="gear-btn">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Customize
+      </button>
+      <div class="inline-timer-container">
+        <span class="inline-timer-label" id="focusTimerLabel">⏱️</span>
+        <input type="number" id="focusTimerInput" class="inline-timer-input" placeholder="45" min="1" max="120">
+        <span class="inline-timer-label">min</span>
+        <span class="inline-countdown" id="focusCountdown">45:00</span>
+      </div>
     </div>
-    <div class="domain-list" id="customDomains"></div>
   </div>
 
   <div class="profile-section">
@@ -1174,26 +1387,24 @@
   </div>
 
   <!-- AI Assistant: Floating Action Button -->
-  <button class="ai-fab" id="aiFab" title="AI Assistant">✨</button>
+  <button class="ai-fab" id="aiFab" title="Open FOKUS AI in Side Panel">✨ FOKUS AI</button>
 
-  <!-- AI Assistant: Backdrop -->
-  <div class="ai-modal-overlay" id="aiOverlay"></div>
+  </div><!-- end #mainView -->
 
-  <!-- AI Assistant: Chat Modal -->
-  <div class="ai-modal" id="aiModal">
-    <div class="ai-modal-header">
-      <h3>✨ AI Assistant</h3>
-      <button class="ai-modal-close" id="aiClose">✕</button>
+  <!-- SETTINGS VIEW (hidden by default) -->
+  <div id="settingsView">
+    <div class="settings-header">
+      <button id="backBtn" class="back-btn">←</button>
+      <span class="settings-title">Allowed Sites</span>
     </div>
-    <div class="ai-messages" id="aiMessages">
-      <div class="ai-welcome">Ask me anything about the page you're viewing. I'll read the content and give you a
-        helpful answer.</div>
+    <div class="settings-card">
+      <div class="blocklist-count" id="blocklistCount"></div>
+      <div class="input-group">
+        <input type="text" id="blocklistInput" placeholder="e.g., github.com">
+        <button id="addBlocklistDomain" class="add-btn">Add</button>
+      </div>
+      <div class="domain-list" id="blocklistDomains"></div>
     </div>
-    <div class="ai-modal-input-bar">
-      <input type="text" id="aiInput" placeholder="Ask about this page…">
-      <button class="ai-send-btn" id="aiSend">Send</button>
-    </div>
-
   </div>
 
   <script src="popup.js"></script>

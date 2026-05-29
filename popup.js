@@ -1,130 +1,201 @@
 document.addEventListener('DOMContentLoaded', function () {
   const enableToggle = document.getElementById('enableToggle');
-  const domainInput = document.getElementById('domainInput');
-  const addDomainBtn = document.getElementById('addDomain');
-  const customDomainsContainer = document.getElementById('customDomains');
+  const openSettingsBtn = document.getElementById('openSettingsBtn');
+  const backBtn = document.getElementById('backBtn');
+  const mainView = document.getElementById('mainView');
+  const settingsView = document.getElementById('settingsView');
+  const addBlocklistDomainBtn = document.getElementById('addBlocklistDomain');
+  const blocklistInputEl = document.getElementById('blocklistInput');
 
   initializePopup();
   initializeContests();
   initializeProfile();
   initializeAiAssistant();
 
+  // Navigate to settings page
+  openSettingsBtn.addEventListener('click', function () {
+    mainView.style.display = 'none';
+    settingsView.style.display = 'block';
+    loadFullBlocklist();
+  });
+
+  // Navigate back to main page
+  backBtn.addEventListener('click', function () {
+    settingsView.style.display = 'none';
+    mainView.style.display = 'block';
+  });
+
+  // Add domain to blocklist
+  addBlocklistDomainBtn.addEventListener('click', addToBlocklist);
+  blocklistInputEl.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') addToBlocklist();
+  });
+  
+  // Real-time filter list when typing
+  blocklistInputEl.addEventListener('input', function (e) {
+    const query = e.target.value.toLowerCase().trim();
+    const items = document.querySelectorAll('.domain-item');
+    items.forEach(item => {
+      const domainName = item.dataset.search || '';
+      if (domainName.includes(query)) {
+        item.style.display = 'flex';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  });
+
   enableToggle.addEventListener('change', function () {
     const enabled = enableToggle.checked;
-    console.log('Toggle clicked, enabled:', enabled);
+    const timerInput = document.getElementById('focusTimerInput');
+    const duration = enabled && timerInput.value ? parseInt(timerInput.value, 10) : 0;
 
     chrome.runtime.sendMessage({
       action: 'toggle',
-      enabled: enabled
+      enabled: enabled,
+      duration: duration
     }, function (response) {
       if (chrome.runtime.lastError) {
-        console.error('Runtime error:', chrome.runtime.lastError);
-        showNotification('Error toggling focus mode. Please try again.', 'error');
+        showNotification('Error toggling focus mode.', 'error');
         enableToggle.checked = !enabled;
         return;
       }
 
       if (response && response.success) {
-        console.log('Toggle successful');
-        updateStatus(enabled);
-
-        // Check all tabs immediately
-        chrome.runtime.sendMessage({
-          action: 'checkAllTabs',
-          enabled: enabled
-        });
+        if (enabled) {
+          showNotification('Focus mode enabled', 'success');
+        } else {
+          showNotification('Focus mode disabled', 'error');
+        }
+        chrome.runtime.sendMessage({ action: 'checkAllTabs', enabled: enabled });
       } else {
-        console.error('Toggle failed:', response);
         showNotification('Failed to toggle focus mode', 'error');
         enableToggle.checked = !enabled;
       }
     });
   });
 
-  addDomainBtn.addEventListener('click', addCustomDomain);
-  domainInput.addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-      addCustomDomain();
-    }
-  });
-
   function initializePopup() {
-    chrome.runtime.sendMessage({ action: 'getStatus' }, function (response) {
-      enableToggle.checked = response.enabled ?? false;
+    chrome.runtime.sendMessage({ action: 'getSettings' }, function (response) {
+      if (response) {
+        enableToggle.checked = response.enabled ?? false;
+      }
     });
-    loadCustomDomains();
+
+    // Set up inline timer UI
+    const timerInput = document.getElementById('focusTimerInput');
+    const timerLabel = document.getElementById('focusTimerLabel');
+    const countdown = document.getElementById('focusCountdown');
+    let inlineInterval;
+    
+    function updateInlineDisplay(ms) {
+      if (ms <= 0) ms = 0;
+      const totalSeconds = Math.floor(ms / 1000);
+      const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+      const s = (totalSeconds % 60).toString().padStart(2, '0');
+      countdown.textContent = `⏳ ${m}:${s}`;
+    }
+    
+    function renderInlineTimer(endTime) {
+      clearInterval(inlineInterval);
+      if (endTime > Date.now()) {
+        timerInput.style.display = 'none';
+        timerLabel.style.display = 'none';
+        countdown.style.display = 'inline-block';
+        
+        const tick = () => {
+          const remaining = endTime - Date.now();
+          if (remaining <= 0) {
+            updateInlineDisplay(0);
+            clearInterval(inlineInterval);
+          } else {
+            updateInlineDisplay(remaining);
+          }
+        };
+        tick();
+        inlineInterval = setInterval(tick, 1000);
+      } else {
+        timerInput.style.display = 'inline-block';
+        timerLabel.style.display = 'inline-block';
+        countdown.style.display = 'none';
+      }
+    }
+    
+    chrome.storage.local.get(['pomodoroEndTime'], (res) => {
+      renderInlineTimer(res.pomodoroEndTime || 0);
+    });
+    
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.pomodoroEndTime) {
+        renderInlineTimer(changes.pomodoroEndTime.newValue || 0);
+      }
+    });
   }
 
-  function updateStatus(enabled) {
-    if (enabled) {
-      showNotification('Focus mode enabled - only coding sites allowed', 'success');
-    } else {
-      showNotification('Focus mode disabled', 'error');
-    }
-  }
+  function addToBlocklist() {
+    const domain = blocklistInputEl.value.trim().toLowerCase();
+    if (!domain) return;
 
-  function addCustomDomain() {
-    const domain = domainInput.value.trim().toLowerCase();
-
-    if (!domain) {
-      showNotification('Please enter a domain name', 'error');
-      return;
-    }
-
-    // More flexible domain validation
     const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]*\.[a-zA-Z]{2,}$/;
     if (!domainRegex.test(domain)) {
-      showNotification('Please enter a valid domain (e.g., example.com)', 'error');
+      showNotification('Enter a valid domain', 'error');
       return;
     }
 
-    chrome.runtime.sendMessage({
-      action: 'addCustomDomain',
-      domain: domain
-    }, function (response) {
-      if (response.success) {
-        domainInput.value = '';
-        loadCustomDomains();
-        showNotification('Domain added successfully!', 'success');
-      }
-    });
-  }
-
-  function loadCustomDomains() {
-    chrome.runtime.sendMessage({ action: 'getCustomDomains' }, function (response) {
-      displayCustomDomains(response.domains);
-    });
-  }
-
-  function displayCustomDomains(domains) {
-    customDomainsContainer.innerHTML = '';
-
-    domains.forEach(domain => {
-      const domainItem = document.createElement('div');
-      domainItem.className = 'domain-item';
-      domainItem.innerHTML = `
-        <span>${domain}</span>
-        <button class="remove-btn" data-domain="${domain}">×</button>
-      `;
-      customDomainsContainer.appendChild(domainItem);
-    });
-
-    document.querySelectorAll('.remove-btn').forEach(btn => {
-      btn.addEventListener('click', function () {
-        removeCustomDomain(this.dataset.domain);
-      });
-    });
-  }
-
-  function removeCustomDomain(domain) {
-    chrome.runtime.sendMessage({
-      action: 'removeCustomDomain',
-      domain: domain
-    }, function (response) {
+    chrome.runtime.sendMessage({ action: 'addToBlocklist', domain: domain }, function (response) {
       if (response && response.success) {
-        loadCustomDomains();
-        showNotification('Domain removed', 'success');
+        blocklistInputEl.value = '';
+        loadFullBlocklist();
+        showNotification('Site added!', 'success');
+      } else {
+        showNotification(response && response.error ? response.error : 'Failed to add', 'error');
       }
+    });
+  }
+
+  function loadFullBlocklist() {
+    chrome.runtime.sendMessage({ action: 'getFullBlocklist' }, function (response) {
+      if (response && response.blocklist) {
+        displayBlocklist(response.blocklist);
+      }
+    });
+  }
+
+  function displayBlocklist(blocklist) {
+    const blocklistDomains = document.getElementById('blocklistDomains');
+    const blocklistCount = document.getElementById('blocklistCount');
+    if (!blocklistDomains) return;
+
+    // Sort alphabetically
+    blocklist.sort((a, b) => a.domain.localeCompare(b.domain));
+
+    blocklistDomains.innerHTML = '';
+    if (blocklistCount) {
+      blocklistCount.textContent = `${blocklist.length} site${blocklist.length !== 1 ? 's' : ''} allowed`;
+    }
+
+    blocklist.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'domain-item';
+      // Store domain for filtering
+      el.dataset.search = item.domain.toLowerCase();
+      el.innerHTML = `
+        <div class="domain-info"><span>${item.domain}</span></div>
+        <button class="remove-btn" data-domain="${item.domain}">×</button>
+      `;
+      blocklistDomains.appendChild(el);
+    });
+
+    blocklistDomains.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const domain = this.dataset.domain;
+        chrome.runtime.sendMessage({ action: 'removeFromBlocklist', domain: domain }, function (response) {
+          if (response && response.success) {
+            loadFullBlocklist();
+            showNotification(`${domain} removed`, 'success');
+          }
+        });
+      });
     });
   }
 
@@ -182,16 +253,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const remindAllBtn = document.getElementById('remindAllBtn');
     if (remindAllBtn) {
       remindAllBtn.addEventListener('click', () => {
-        const unsetBtns = document.querySelectorAll('#contestsList .reminder-btn:not(.active)');
-        if (unsetBtns.length === 0) {
-          showNotification('All reminders are already set!', 'success');
-          return;
-        }
+        chrome.storage.local.get(['disabledReminders'], (result) => {
+          let disabled = result.disabledReminders || {};
+          const allBtns = document.querySelectorAll('#contestsList .reminder-btn');
+          const isAllSet = remindAllBtn.classList.contains('all-set');
 
-        // Programmatically click all unset buttons
-        unsetBtns.forEach(btn => btn.click());
-        showNotification('Reminders set for all upcoming contests!', 'success');
-        updateRemindAllButtonState();
+          if (isAllSet) {
+            // Turn OFF all reminders
+            allBtns.forEach(btn => {
+              if (btn.dataset.contestId) {
+                disabled[btn.dataset.contestId] = true;
+                btn.classList.remove('active');
+                btn.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
+                btn.title = 'Set reminder for this contest';
+              }
+            });
+            chrome.storage.local.set({ disabledReminders: disabled }, () => {
+              showNotification('All reminders turned off!', 'success');
+              updateRemindAllButtonState();
+            });
+          } else {
+            // Turn ON all reminders
+            allBtns.forEach(btn => {
+              if (btn.dataset.contestId) {
+                delete disabled[btn.dataset.contestId];
+                btn.classList.add('active');
+                btn.innerHTML = `<span class="reminder-icon">✓</span>Set`;
+                btn.title = 'Reminder set - click to remove';
+              }
+            });
+            chrome.storage.local.set({ disabledReminders: disabled }, () => {
+              showNotification('Reminders set for all upcoming contests!', 'success');
+              updateRemindAllButtonState();
+            });
+          }
+        });
       });
     }
 
@@ -288,6 +384,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const futureContests = contests.filter(contest => new Date(contest.startTime) > now);
 
       await cacheContests(futureContests);
+      chrome.runtime.sendMessage({ action: 'updateBadge' });
 
       return futureContests.slice(0, 10);
     } catch (error) {
@@ -776,11 +873,16 @@ document.addEventListener('DOMContentLoaded', function () {
     reminderBtn.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
 
     if (contest && contest.id) {
+      reminderBtn.dataset.contestId = contest.id; // Store ID for bulk actions
       checkReminderStatus(contest.id).then(isSet => {
         if (isSet) {
           reminderBtn.classList.add('active');
           reminderBtn.innerHTML = `<span class="reminder-icon">✓</span>Set`;
           reminderBtn.title = 'Reminder set - click to remove';
+        } else {
+          reminderBtn.classList.remove('active');
+          reminderBtn.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
+          reminderBtn.title = 'Set reminder for this contest';
         }
       }).catch(() => { });
     }
@@ -796,9 +898,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function checkReminderStatus(contestId) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['contestReminders'], (result) => {
-        const reminders = result.contestReminders || {};
-        resolve(!!reminders[contestId]);
+      chrome.storage.local.get(['disabledReminders'], (result) => {
+        const disabled = result.disabledReminders || {};
+        // It is SET (true) by default, unless it is in the disabled list
+        resolve(!disabled[contestId]);
       });
     });
   }
@@ -806,21 +909,31 @@ document.addEventListener('DOMContentLoaded', function () {
   async function toggleReminder(contest, buttonElement) {
     const isCurrentlySet = buttonElement.classList.contains('active');
 
-    if (isCurrentlySet) {
-      await removeReminder(contest.id);
-      buttonElement.classList.remove('active');
-      buttonElement.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
-      buttonElement.title = 'Set reminder for this contest';
-      showNotification('Reminder removed', 'success');
-    } else {
-      await setReminder(contest);
-      buttonElement.classList.add('active');
-      buttonElement.innerHTML = `<span class="reminder-icon">✓</span>Set`;
-      buttonElement.title = 'Reminder set - click to remove';
-      showNotification('Reminder set! You\'ll be notified 1 hour before the contest.', 'success');
-    }
-
-    updateRemindAllButtonState();
+    chrome.storage.local.get(['disabledReminders'], (result) => {
+      const disabled = result.disabledReminders || {};
+      
+      if (isCurrentlySet) {
+        // User wants to turn it off
+        disabled[contest.id] = true;
+        chrome.storage.local.set({ disabledReminders: disabled }, () => {
+          buttonElement.classList.remove('active');
+          buttonElement.innerHTML = `<span class="reminder-icon">🔔</span>Remind`;
+          buttonElement.title = 'Set reminder for this contest';
+          showNotification('Reminder removed', 'success');
+          updateRemindAllButtonState();
+        });
+      } else {
+        // User wants to turn it back on
+        delete disabled[contest.id];
+        chrome.storage.local.set({ disabledReminders: disabled }, () => {
+          buttonElement.classList.add('active');
+          buttonElement.innerHTML = `<span class="reminder-icon">✓</span>Set`;
+          buttonElement.title = 'Reminder set - click to remove';
+          showNotification('Reminder set! You\'ll be notified 1 hour before.', 'success');
+          updateRemindAllButtonState();
+        });
+      }
+    });
   }
 
   function updateRemindAllButtonState() {
@@ -839,258 +952,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  async function setReminder(contest) {
-    const contestStart = new Date(contest.startTime);
-    const now = new Date();
-    const reminderTime = new Date(contestStart.getTime() - (1 * 60 * 60 * 1000));
-
-    if (reminderTime <= now) {
-      const timeUntilContest = Math.floor((contestStart - now) / (1000 * 60));
-      if (timeUntilContest <= 0) {
-        showNotification('Contest has already started', 'error');
-        return;
-      } else if (timeUntilContest < 60) {
-        showNotification(`Contest starts in ${timeUntilContest} minutes - too soon for 1 hour reminder`, 'error');
-        return;
-      }
-    }
-
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['contestReminders'], (result) => {
-        const reminders = result.contestReminders || {};
-        reminders[contest.id] = {
-          id: contest.id,
-          title: contest.title,
-          platform: contest.platform,
-          startTime: contest.startTime,
-          url: contest.url,
-          reminderTime: reminderTime.toISOString(),
-          alarmName: `contest-${contest.id}`
-        };
-
-        chrome.storage.local.set({ contestReminders: reminders }, () => {
-          chrome.runtime.sendMessage({
-            action: 'setContestReminder',
-            contest: contest,
-            reminderTime: reminderTime.toISOString()
-          }, (response) => {
-            resolve();
-          });
-        });
-      });
-    });
-  }
-
-  async function removeReminder(contestId) {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['contestReminders'], (result) => {
-        const reminders = result.contestReminders || {};
-        const reminder = reminders[contestId];
-
-        if (reminder) {
-          delete reminders[contestId];
-          chrome.storage.local.set({ contestReminders: reminders }, () => {
-            chrome.runtime.sendMessage({
-              action: 'removeContestReminder',
-              contestId: contestId,
-              alarmName: reminder.alarmName
-            }, (response) => {
-              resolve();
-            });
-          });
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
   // ===========================
   // AI Assistant (Backend-powered)
   // ===========================
   const AI_SERVER_URL = 'http://localhost:3001';
 
+  // ── AI Assistant: Open Side Panel ──
   function initializeAiAssistant() {
     const fab = document.getElementById('aiFab');
-    const modal = document.getElementById('aiModal');
-    const overlay = document.getElementById('aiOverlay');
-    const closeBtn = document.getElementById('aiClose');
-    const sendBtn = document.getElementById('aiSend');
-    const input = document.getElementById('aiInput');
+    if (!fab) return;
 
-    fab.addEventListener('click', toggleAiModal);
-    closeBtn.addEventListener('click', toggleAiModal);
-    overlay.addEventListener('click', toggleAiModal);
-    sendBtn.addEventListener('click', handleAskAi);
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleAskAi();
+    fab.addEventListener('click', async () => {
+      try {
+        // Open the side panel on the current window
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+        // Close the popup so the side panel is clearly visible
+        window.close();
+      } catch (err) {
+        console.error('Failed to open side panel:', err);
+      }
     });
   }
 
-  function toggleAiModal() {
-    const modal = document.getElementById('aiModal');
-    const overlay = document.getElementById('aiOverlay');
-    const fab = document.getElementById('aiFab');
-
-    const isOpen = modal.classList.contains('visible');
-
-    if (isOpen) {
-      modal.classList.remove('visible');
-      overlay.classList.remove('visible');
-      fab.classList.remove('active');
-      fab.textContent = '✨';
-    } else {
-      modal.classList.add('visible');
-      overlay.classList.add('visible');
-      fab.classList.add('active');
-      fab.textContent = '✕';
-      document.getElementById('aiInput').focus();
-    }
-  }
-
-  // Lightweight markdown → HTML renderer
-  function renderMarkdown(text) {
-    let html = text;
-    // Escape HTML entities first
-    html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Code blocks (```lang ... ```)
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Bold
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Italic
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    // Headers (### → h4, ## → h3)  
-    html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
-    html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
-    // Unordered lists
-    html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-    // Ordered lists
-    html = html.replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>');
-    // Paragraphs (double newlines)
-    html = html.replace(/\n\n/g, '</p><p>');
-    // Single newlines → <br> (but not inside pre/code)
-    html = html.replace(/\n/g, '<br>');
-    // Wrap in paragraph
-    html = '<p>' + html + '</p>';
-    // Clean up empty paragraphs
-    html = html.replace(/<p><\/p>/g, '');
-    return html;
-  }
-
-  function addMessage(text, type) {
-    const messagesContainer = document.getElementById('aiMessages');
-
-    // Remove welcome message on first interaction
-    const welcome = messagesContainer.querySelector('.ai-welcome');
-    if (welcome) welcome.remove();
-
-    const msg = document.createElement('div');
-    msg.className = `ai-msg ${type}`;
-
-    // Render markdown for bot messages, plain text for user messages
-    if (type.startsWith('bot') && !type.includes('thinking')) {
-      msg.innerHTML = renderMarkdown(text);
-    } else {
-      msg.textContent = text;
-    }
-
-    messagesContainer.appendChild(msg);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    return msg;
-  }
-
-  async function handleAskAi() {
-    const input = document.getElementById('aiInput');
-    const sendBtn = document.getElementById('aiSend');
-    const question = input.value.trim();
-
-    if (!question) return;
-
-    // Show user message
-    addMessage(question, 'user');
-    input.value = '';
-    sendBtn.disabled = true;
-
-    // Show thinking indicator
-    const thinkingMsg = addMessage('Thinking…', 'bot thinking');
-
-    try {
-      // 1. Get page context from content script (with injection fallback)
-      let pageContext = '';
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-        // Skip system/extension pages
-        if (tab && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
-          let contentResponse = null;
-
-          // Try the content script first
-          try {
-            contentResponse = await chrome.tabs.sendMessage(tab.id, { action: 'getPageContent' });
-          } catch (e) {
-            // Content script not loaded — inject one on the fly
-            console.log('Content script not available, injecting...');
-            try {
-              const results = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: () => {
-                  const bodyText = document.body.innerText;
-                  const maxLen = 10000;
-                  return {
-                    content: bodyText.length > maxLen ? bodyText.substring(0, maxLen) + '... [Truncated]' : bodyText,
-                    title: document.title,
-                    url: window.location.href
-                  };
-                }
-              });
-              if (results && results[0] && results[0].result) {
-                contentResponse = results[0].result;
-              }
-            } catch (injectErr) {
-              console.log('Script injection also failed:', injectErr.message);
-            }
-          }
-
-          if (contentResponse && contentResponse.content) {
-            pageContext = `Page: "${contentResponse.title}"\nURL: ${contentResponse.url}\n\n${contentResponse.content}`;
-          }
-        }
-      } catch (e) {
-        pageContext = '';
-      }
-
-      // 2. Send to secure backend
-      const response = await fetch(`${AI_SERVER_URL}/api/ask`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: question, context: pageContext })
-      });
-
-      const data = await response.json();
-
-      // Replace thinking message with answer
-      thinkingMsg.remove();
-
-      if (response.ok && data.answer) {
-        addMessage(data.answer, 'bot');
-      } else {
-        addMessage(data.error || 'Failed to get a response.', 'bot error');
-      }
-
-    } catch (err) {
-      thinkingMsg.remove();
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        addMessage('Cannot reach the AI server. Make sure it\'s running:\n\ncd server && npm start', 'bot error');
-      } else {
-        addMessage(`Error: ${err.message}`, 'bot error');
-      }
-    } finally {
-      sendBtn.disabled = false;
-      document.getElementById('aiInput').focus();
-    }
-  }
-
 });
+

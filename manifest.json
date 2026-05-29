@@ -9,7 +9,9 @@
     "tabs",
     "scripting",
     "alarms",
-    "notifications"
+    "notifications",
+    "sidePanel",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -26,6 +28,13 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "icons": {
     "16": "icons/icon16.png",
