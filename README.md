@@ -19,9 +19,12 @@ FOKUS CODE is a powerful Chrome extension designed to transform your browsing ha
 - The side panel opens instantly and starts explaining — automatically, no copy-paste needed.
 
 ### 🔐 Focus Mode
-- Blocks all non-coding websites (social media, streaming, news, etc.) while keeping coding platforms like LeetCode, Codeforces, GitHub, and YouTube accessible.
-- Toggle Focus Mode on/off from the popup with a single click.
-- Optional countdown timer to set a deep work session duration.
+Stay distraction-free while coding by blocking non-productive websites such as social media, streaming platforms, and news sites, while still allowing access to coding platforms like LeetCode, Codeforces, GitHub, and YouTube.
+
+* One-click toggle to enable or disable Focus Mode directly from the extension popup.
+* Smart website filtering tailored for coding sessions.
+* Optional countdown timer to start focused deep-work or Pomodoro sessions with automatic tracking.
+
 
 ### 🏆 Contest Tracker
 - Real-time upcoming contest listings for **Codeforces**, **LeetCode**, **CodeChef**, and **AtCoder**.
