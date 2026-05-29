@@ -101,7 +101,7 @@ function clearAllRatingCache() {
 }
 clearCacheForUsers();
 
-// Alternative usage examples:
-// clearCacheForPlatform('codeforces');  // Clear only codeforces users
-// clearCacheForUser('leetcode', 'newuser');  // Clear specific user
 // clearAllRatingCache();  // Clear all rating cache
+
+// FOKUS CODE rating cache utility
+
