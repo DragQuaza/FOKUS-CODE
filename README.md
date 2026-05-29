@@ -12,8 +12,6 @@ FOKUS CODE is a powerful Chrome extension designed to transform your browsing ha
 - **Persistent Side Panel**: The AI assistant opens as a full-height Chrome Side Panel that docks beside your browser tab, so it never overlaps your code on LeetCode, Codeforces, or any coding platform.
 - **Page-Aware Context**: Automatically reads the current problem/page and uses it as context for all your questions.
 - **Quick Prompts**: One-click buttons for the most common actions — Explain, Complexity, Hint, Approach, Find Bug, Optimize.
-- **Code Blocks**: Beautifully formatted responses with dark-themed code blocks, syntax rendering, and individual **Copy** buttons for every snippet.
-- **True Regeneration**: Clicking "Try Again" reloads the response _in-place_ (no new duplicate bubbles) — exactly how ChatGPT and Gemini work.
 
 ### 🖱️ Right-Click "Explain with FOKUS AI"
 - Highlight **any code, formula, or error** on any website (GitHub, StackOverflow, AtCoder editorials, etc.).
