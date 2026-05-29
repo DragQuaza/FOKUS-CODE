@@ -13,7 +13,6 @@ FOKUS CODE is a powerful Chrome extension designed to transform your browsing ha
 - **Page-Aware Context**: Automatically reads the current problem/page and uses it as context for all your questions.
 - **Quick Prompts**: One-click buttons for the most common actions — Explain, Complexity, Hint, Approach, Find Bug, Optimize.
 - **Code Blocks**: Beautifully formatted responses with dark-themed code blocks, syntax rendering, and individual **Copy** buttons for every snippet.
-- **Reply Actions**: Every AI response includes **Copy** (📋) and **Try Again** (🔄) icon buttons for quick access.
 - **True Regeneration**: Clicking "Try Again" reloads the response _in-place_ (no new duplicate bubbles) — exactly how ChatGPT and Gemini work.
 
 ### 🖱️ Right-Click "Explain with FOKUS AI"
