@@ -4,6 +4,17 @@
 
 FOKUS CODE is a powerful Chrome extension designed to transform your browsing habits into a high-octane coding workflow. It blocks distractions, keeps you updated on upcoming contests, tracks your competitive programming ratings, and provides a full-featured AI assistant that works alongside you as you code — without ever leaving your tab.
 
+<p align="center">
+  <img src="Front%20page.png" width="32%" alt="Front Page" />
+  <img src="Rating%20page.png" width="32%" alt="Rating Page" />
+  <img src="Upcoming%20contest.png" width="32%" alt="Upcoming Contest" />
+</p>
+
+<p align="center">
+  <img src="Customizable%20allowed%20sites.png" width="48%" alt="Customizable Allowed Sites" />
+  <img src="FOKUS%20AI%20Assistant.png" width="48%" alt="FOKUS AI Assistant" />
+</p>
+
 ---
 
 ## 🚀 Key Features
